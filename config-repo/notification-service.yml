@@ -1,0 +1,9 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://mongodb:27017/notification_db
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: app_user
+    password: app_pass

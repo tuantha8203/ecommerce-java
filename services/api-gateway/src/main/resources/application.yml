@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: product-service
+              uri: lb://product-service
+              predicates:
+                - Path=/api/*/products/**
+            - id: inventory-service
+              uri: lb://inventory-service
+              predicates:
+                - Path=/api/*/inventory/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/*/orders/**
+            - id: payment-service
+              uri: lb://payment-service
+              predicates:
+                - Path=/api/*/payments/**
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/*/notifications/**
+            - id: search-service
+              uri: lb://search-service
+              predicates:
+                - Path=/api/*/search/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

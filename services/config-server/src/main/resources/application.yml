@@ -1,0 +1,19 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native # cấu hình để sử dụng file system làm nơi lưu trữ các file cấu hình
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:///config-repo # đường dẫn tới thư mục chứa các file cấu hình
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

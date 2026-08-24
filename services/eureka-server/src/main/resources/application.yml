@@ -1,0 +1,22 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # tắt ở dev (chỉ 1 instance) để thấy instance rớt ngay, không đợi self-preservation.
+    # PHẢI bật lại `true` (mặc định production) khi chạy nhiều instance Eureka ở Phase 13 (HA) —
+    # xem [Vì sao] ngay dưới.
+    enable-self-preservation: false
