@@ -6,6 +6,12 @@ spring:
     name: product-service
   config:
     import: optional:configserver:http://config-server:8888
+  jpa:
+    hibernate:
+      ddl-auto: validate # sài flyway để quản lý database, nên không cần spring tự động tạo bảng
+    show-sql: true
+  flyway:
+    enable: true
 
 eureka:
   client:
@@ -13,6 +19,10 @@ eureka:
       defaultZone: http://eureka-server:8761/eureka/
   instance:
     prefer-ip-address: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
 
 management:
   endpoints:
