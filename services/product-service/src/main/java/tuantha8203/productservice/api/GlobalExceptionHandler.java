@@ -21,8 +21,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(ProductNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+        ErrorCode errorCode = ErrorCode.PRODUCT_NOT_FOUND;
+        return ResponseEntity.status(errorCode.status).body(ApiResponse.error(errorCode, ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -35,21 +35,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(HttpStatus.CONFLICT.value(), "Sku already exists"));
+        ErrorCode errorCode = ErrorCode.SKU_ALREADY_EXISTS;
+        return ResponseEntity.status(errorCode.status).body(ApiResponse.error(errorCode, "Sku already exists"));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        ErrorCode errorCode = ErrorCode.INVALID_PARAMETER;
         String message = "Invalid value for parameter '" + ex.getName() + "'";
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), message));
+        return ResponseEntity.status(errorCode.status).body(ApiResponse.error(errorCode, message));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception ex) {
         log.error("Unhandled exception", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal server error"));
+        ErrorCode errorCode = ErrorCode.INTERNAL_ERROR;
+        return ResponseEntity.status(errorCode.status).body(ApiResponse.error(errorCode, "Internal server error"));
     }
 }

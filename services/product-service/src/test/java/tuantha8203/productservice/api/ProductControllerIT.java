@@ -73,7 +73,7 @@ class ProductControllerIT {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody().success()).isFalse();
-        assertThat(response.getBody().code()).isEqualTo(404);
+        assertThat(response.getBody().errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND.name());
         assertThat(response.getBody().data()).isNull();
     }
 
@@ -85,7 +85,7 @@ class ProductControllerIT {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().success()).isFalse();
-        assertThat(response.getBody().code()).isEqualTo(400);
+        assertThat(response.getBody().errorCode()).isEqualTo(ErrorCode.INVALID_PARAMETER.name());
     }
 
     @Test
