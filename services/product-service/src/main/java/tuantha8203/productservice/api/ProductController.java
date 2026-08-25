@@ -2,6 +2,8 @@ package tuantha8203.productservice.api;
 
 import tuantha8203.productservice.application.ProductService;
 import jakarta.validation.Valid;
+
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -36,7 +38,7 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProductResponse>>> listAll(
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<ProductResponse> page = service.listAll(pageable);
         return ResponseEntity.ok(ApiResponse.successPaged(page.getContent(), PaginationResponse.from(page)));
     }
