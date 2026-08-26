@@ -19,6 +19,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import tuantha8203.common.api.ApiResponse;
+import tuantha8203.common.api.CommonErrorCode;
+import tuantha8203.common.api.FieldError;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
@@ -75,7 +79,7 @@ class ProductControllerIT {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody().success()).isFalse();
-        assertThat(response.getBody().errorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND.name());
+        assertThat(response.getBody().errorCode()).isEqualTo(ProductErrorCode.PRODUCT_NOT_FOUND.name());
         assertThat(response.getBody().data()).isNull();
     }
 
@@ -87,7 +91,7 @@ class ProductControllerIT {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().success()).isFalse();
-        assertThat(response.getBody().errorCode()).isEqualTo(ErrorCode.INVALID_PARAMETER.name());
+        assertThat(response.getBody().errorCode()).isEqualTo(CommonErrorCode.INVALID_PARAMETER.name());
     }
 
     @Test

@@ -25,6 +25,7 @@
     </properties>
 
     <modules>
+        <module>services/common</module>
         <module>services/eureka-server</module>
         <module>services/config-server</module>
         <module>services/product-service</module>

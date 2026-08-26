@@ -1,4 +1,4 @@
-package tuantha8203.productservice.api;
+package tuantha8203.common.api;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,7 +25,7 @@ public record ApiResponse<T>(
     }
 
     public static <T> ApiResponse<T> validationError(List<FieldError> errors) {
-        return new ApiResponse<>(false, ErrorCode.VALIDATION_FAILED.name(), "Validation failed", null, null, errors,
-                Instant.now());
+        return new ApiResponse<>(false, CommonErrorCode.VALIDATION_FAILED.name(), "Validation failed", null, null,
+                errors, Instant.now());
     }
 }

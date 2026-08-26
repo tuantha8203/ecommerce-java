@@ -1,5 +1,7 @@
 package tuantha8203.productservice.api;
 
+import tuantha8203.common.api.ApiResponse;
+import tuantha8203.common.api.PaginationResponse;
 import tuantha8203.productservice.application.ProductService;
 import jakarta.validation.Valid;
 

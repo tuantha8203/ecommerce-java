@@ -1,4 +1,4 @@
-package tuantha8203.productservice.api;
+package tuantha8203.common.api;
 
 public record FieldError(
     String field,

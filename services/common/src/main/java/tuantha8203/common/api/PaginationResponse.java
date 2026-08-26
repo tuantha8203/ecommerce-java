@@ -1,4 +1,4 @@
-package tuantha8203.productservice.api;
+package tuantha8203.common.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.data.domain.Page;
