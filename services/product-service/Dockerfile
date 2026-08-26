@@ -4,6 +4,11 @@ ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
 
+# BusyBox wget (dùng bởi mvnw) chỉ đọc biến proxy chữ thường, không đọc ARG hoa ở trên.
+ENV http_proxy=$HTTP_PROXY \
+    https_proxy=$HTTPS_PROXY \
+    no_proxy=$NO_PROXY
+
 WORKDIR /build
 
 RUN apk add --no-cache wget
@@ -32,6 +37,8 @@ COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
+COPY services/common/pom.xml services/common/pom.xml
+COPY services/common/src services/common/src
 COPY services/eureka-server/pom.xml services/eureka-server/pom.xml
 COPY services/config-server/pom.xml services/config-server/pom.xml
 COPY services/inventory-service/pom.xml services/inventory-service/pom.xml
