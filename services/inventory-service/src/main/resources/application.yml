@@ -6,6 +6,12 @@ spring:
     name: inventory-service
   config:
     import: optional:configserver:http://config-server:8888
+  jpa:
+    hibernate:
+      ddl-auto: validate # sài flyway để quản lý database, nên không cần spring tự động tạo bảng
+    show-sql: true
+  flyway:
+    enabled: true
 
 eureka:
   client:
