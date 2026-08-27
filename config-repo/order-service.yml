@@ -5,3 +5,20 @@ spring:
     password: order_pass
   kafka:
     bootstrap-servers: kafka:9094
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        spring.json.type.mapping: orderCreated:tuantha8203.orderservice.events.OrderCreatedEvent
+    consumer:
+      group-id: order-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.trusted.packages: "tuantha8203.*"
+        spring.json.type.mapping: >-
+          inventoryReserved:tuantha8203.orderservice.events.InventoryReservedEvent,
+          inventoryFailed:tuantha8203.orderservice.events.InventoryFailedEvent
+    listener:
+      concurrency: 3   # số thread consumer song song / instance — KHÔNG vượt quá số partition của topic (6.2)

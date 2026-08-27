@@ -9,3 +9,20 @@ spring:
       port: 6379
   kafka:
     bootstrap-servers: kafka:9094
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        spring.json.type.mapping: >-
+          inventoryReserved:tuantha8203.inventoryservice.events.InventoryReservedEvent,
+          inventoryFailed:tuantha8203.inventoryservice.events.InventoryFailedEvent
+    consumer:
+      group-id: inventory-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.trusted.packages: "tuantha8203.*"
+        spring.json.type.mapping: orderCreated:tuantha8203.inventoryservice.events.OrderCreatedEvent
+    listener:
+      concurrency: 3

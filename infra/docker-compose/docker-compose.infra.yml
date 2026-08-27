@@ -74,6 +74,20 @@ services:
     networks:
       - ecommerce-java-net
 
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:v1.5.0
+    restart: unless-stopped
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ecommerce-java
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9094
+    ports:
+      - "${KAFKA_UI_PORT:-8089}:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - ecommerce-java-net
+
   rabbitmq:
     image: rabbitmq:3.13-management
     restart: unless-stopped
