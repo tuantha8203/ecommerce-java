@@ -17,14 +17,17 @@ public class ProductService {
 
     private final ProductRepositoryPort repository;
     private final ProductMapper mapper;
+    private final ProductEventPublisher eventPublisher;
 
-    public ProductService(ProductRepositoryPort repository, ProductMapper mapper) {
+    public ProductService(ProductRepositoryPort repository, ProductMapper mapper, ProductEventPublisher eventPublisher) {
         this.repository = repository;
         this.mapper = mapper;
+        this.eventPublisher = eventPublisher;
     }
 
     public ProductResponse create(ProductRequest request) {
         Product saved = repository.save(mapper.toEntity(request));
+        eventPublisher.publishUpdated(saved);
         return mapper.toResponse(saved);
     }
 
@@ -41,11 +44,13 @@ public class ProductService {
     public ProductResponse update(UUID id, ProductRequest request) {
         Product product = findOrThrow(id);
         mapper.updateEntity(product, request);
+        eventPublisher.publishUpdated(product);
         return mapper.toResponse(product);
     }
 
     public void delete(UUID id) {
         repository.delete(findOrThrow(id));
+        eventPublisher.publishDeleted(id);
     }
 
     private Product findOrThrow(UUID id) {

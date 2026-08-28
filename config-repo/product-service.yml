@@ -3,3 +3,12 @@ spring:
     url: jdbc:postgresql://postgres:5432/product_db
     username: product_user
     password: product_pass
+  kafka:
+    bootstrap-servers: kafka:9094
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        spring.json.type.mapping: >-
+          productUpdated:tuantha8203.productservice.events.ProductUpdatedEvent,
+          productDeleted:tuantha8203.productservice.events.ProductDeletedEvent
