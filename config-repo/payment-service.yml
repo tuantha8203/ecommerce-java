@@ -3,3 +3,6 @@ spring:
     url: jdbc:postgresql://postgres:5432/payment_db
     username: payment_user
     password: payment_pass
+
+payment:
+  failure-rate: 0.2   # 20% request fail — tăng lên khi muốn test kịch bản Saga rollback ở Phase 7
