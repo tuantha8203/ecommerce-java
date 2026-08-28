@@ -42,4 +42,20 @@ public interface StockRepository extends JpaRepository<Stock, UUID> {
     int releaseIfNewerToken(@Param("productId") UUID productId,
                              @Param("qty") int qty,
                              @Param("token") long token);
+
+    // Nhập kho (restock) — nghiệp vụ ops thêm hàng mới về, không liên quan tới order nào.
+    // Cộng thẳng vào availableQty, không check tồn kho hiện tại (khác reserveIfAvailable).
+    // Ghi được (1 row) khi: lastFencingToken < token (token còn mới) — cùng cơ chế fencing với
+    // reserve/release để không đá nhau khi restock chạy đồng thời với 1 order đang reserve/release.
+    @Modifying
+    @Query("""
+        UPDATE Stock s
+        SET s.availableQty = s.availableQty + :qty,
+            s.lastFencingToken = :token
+        WHERE s.productId = :productId
+          AND s.lastFencingToken < :token
+        """)
+    int restock(@Param("productId") UUID productId,
+                @Param("qty") int qty,
+                @Param("token") long token);
 }

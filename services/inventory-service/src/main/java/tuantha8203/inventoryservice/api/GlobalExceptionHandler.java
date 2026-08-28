@@ -1,8 +1,12 @@
 package tuantha8203.inventoryservice.api;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -10,6 +14,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import tuantha8203.common.api.ApiResponse;
 import tuantha8203.common.api.CommonErrorCode;
 import tuantha8203.common.api.ErrorCode;
+import tuantha8203.common.api.FieldError;
 import tuantha8203.inventoryservice.application.StockNotFoundException;
 
 @RestControllerAdvice
@@ -21,6 +26,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleNotFound(StockNotFoundException ex) {
         ErrorCode errorCode = InventoryErrorCode.STOCK_NOT_FOUND;
         return ResponseEntity.status(errorCode.status()).body(ApiResponse.error(errorCode, ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
+        List<FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(f -> new FieldError(f.getField(), f.getDefaultMessage()))
+                .toList();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.validationError(errors));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
