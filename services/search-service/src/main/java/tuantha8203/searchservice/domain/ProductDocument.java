@@ -1,5 +1,7 @@
 package tuantha8203.searchservice.domain;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -8,6 +10,8 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 import java.math.BigDecimal;
 
 @Document(indexName = "products")
+@Getter
+@Setter
 public class ProductDocument {
 
     @Id
@@ -23,6 +27,4 @@ public class ProductDocument {
     private String description;
 
     private BigDecimal price;
-
-    // getters/setters — tạo theo pattern chuẩn Lombok // như Phase 4
 }
