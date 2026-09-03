@@ -142,6 +142,27 @@ services:
     networks:
       - ecommerce-java-net
 
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.5.2
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - ecommerce-java-net
+
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
     command: start-dev
