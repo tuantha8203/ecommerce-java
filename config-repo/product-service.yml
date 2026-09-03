@@ -10,5 +10,6 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
       properties:
         spring.json.type.mapping: >-
+          productCreated:tuantha8203.productservice.events.ProductCreatedEvent,
           productUpdated:tuantha8203.productservice.events.ProductUpdatedEvent,
           productDeleted:tuantha8203.productservice.events.ProductDeletedEvent

@@ -25,6 +25,6 @@ spring:
         spring.json.trusted.packages: "tuantha8203.*"
         spring.json.type.mapping: >-
           orderCreated:tuantha8203.inventoryservice.events.OrderCreatedEvent,
-          productUpdated:tuantha8203.inventoryservice.events.ProductUpdatedEvent
+          productCreated:tuantha8203.inventoryservice.events.ProductCreatedEvent
     listener:
       concurrency: 3

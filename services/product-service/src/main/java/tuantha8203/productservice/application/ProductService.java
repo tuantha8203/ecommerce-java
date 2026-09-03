@@ -28,7 +28,7 @@ public class ProductService {
 
     public ProductResponse create(ProductRequest request) {
         Product saved = repository.save(mapper.toEntity(request));
-        eventPublisher.publishUpdated(saved);
+        eventPublisher.publishCreated(saved);
         return mapper.toResponse(saved);
     }
 

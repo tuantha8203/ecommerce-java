@@ -1,6 +1,7 @@
 package tuantha8203.productservice.infrastructure;
 
 import tuantha8203.productservice.domain.Product;
+import tuantha8203.productservice.events.ProductCreatedEvent;
 import tuantha8203.productservice.events.ProductDeletedEvent;
 import tuantha8203.productservice.events.ProductUpdatedEvent;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -13,6 +14,12 @@ public class ProductEventPublisher {
 
     public ProductEventPublisher(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
+    }
+
+    public void publishCreated(Product product) {
+        var event = new ProductCreatedEvent(product.getId(), product.getSku(), product.getName(),
+                product.getDescription(), product.getPrice());
+        kafkaTemplate.send("product.created", product.getId().toString(), event);
     }
 
     public void publishUpdated(Product product) {
