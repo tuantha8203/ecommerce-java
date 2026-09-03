@@ -145,10 +145,11 @@ services:
   kibana:
     image: docker.elastic.co/kibana/kibana:9.5.2
     restart: unless-stopped
-    mem_limit: 512m
+    mem_limit: 1536m
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - xpack.security.enabled=false
+      - NODE_OPTIONS=--max-old-space-size=1024
     ports:
       - "${KIBANA_PORT:-5601}:5601"
     depends_on:
