@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import tuantha8203.productservice.api.ProductRequest;
 import tuantha8203.productservice.domain.Product;
 import tuantha8203.productservice.domain.ProductRepositoryPort;
+import tuantha8203.productservice.infrastructure.ProductEventPublisher;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,11 +32,14 @@ class ProductServiceTest {
     @Mock
     ProductRepositoryPort repository;
 
+    @Mock
+    ProductEventPublisher eventPublisher;
+
     ProductService service;
 
     @BeforeEach
     void setUp() {
-        service = new ProductService(repository, new ProductMapper());
+        service = new ProductService(repository, new ProductMapper(), eventPublisher);
     }
 
     // Product.id chỉ gán được qua @GeneratedValue lúc persist thật — test cần set tay 1 id

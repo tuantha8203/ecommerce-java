@@ -4,6 +4,7 @@ import tuantha8203.productservice.api.ProductRequest;
 import tuantha8203.productservice.api.ProductResponse;
 import tuantha8203.productservice.domain.Product;
 import tuantha8203.productservice.domain.ProductRepositoryPort;
+import tuantha8203.productservice.infrastructure.ProductEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
