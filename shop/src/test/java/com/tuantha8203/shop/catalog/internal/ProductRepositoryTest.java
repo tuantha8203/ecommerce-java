@@ -27,34 +27,35 @@ class ProductRepositoryTest {
     EntityManager em;
 
     @Test
-    void luuVaDocLaiSanPhamKemAnh() {
-        Category ao = categories.save(new Category("Áo", "ao", null));
-        Product p = new Product(ao, "SKU-1", "Áo thun", "ao-thun", null, 150_000);
-        p.addImage("https://cdn.example.com/1.jpg", "mặt trước");
-        products.save(p);
+    void savesAndReloadsProductWithImages() {
+        Category shirts = categories.save(new Category("Shirts", "shirts", null));
+        Product product = new Product(shirts, "SKU-1", "T-shirt", "t-shirt", null, 150_000);
+        product.addImage("https://cdn.example.com/1.jpg", "front view");
+        products.save(product);
 
         em.flush();
         em.clear();
 
-        Product found = products.findBySlug("ao-thun").orElseThrow();
+        Product found = products.findBySlug("t-shirt").orElseThrow();
         assertThat(found.getStatus()).isEqualTo(ProductStatus.DRAFT);
         assertThat(found.getImages()).extracting(ProductImage::getUrl).containsExactly("https://cdn.example.com/1.jpg");
     }
 
     @Test
-    void trungSkuBiDatabaseTuChoi() {
-        Category ao = categories.save(new Category("Áo", "ao", null));
-        products.saveAndFlush(new Product(ao, "SKU-1", "Áo A", "ao-a", null, 100_000));
+    void rejectsDuplicateSkuAtDatabaseLevel() {
+        Category shirts = categories.save(new Category("Shirts", "shirts", null));
+        products.saveAndFlush(new Product(shirts, "SKU-1", "Shirt A", "shirt-a", null, 100_000));
 
-        assertThatThrownBy(() -> products.saveAndFlush(new Product(ao, "SKU-1", "Áo B", "ao-b", null, 100_000)))
+        assertThatThrownBy(
+                        () -> products.saveAndFlush(new Product(shirts, "SKU-1", "Shirt B", "shirt-b", null, 100_000)))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
-    void giaAmBiTuChoiNgayTrongEntity() {
-        Category ao = categories.save(new Category("Áo", "ao", null));
+    void rejectsNegativePriceInEntity() {
+        Category shirts = categories.save(new Category("Shirts", "shirts", null));
 
-        assertThatThrownBy(() -> new Product(ao, "SKU-2", "Áo C", "ao-c", null, -1))
+        assertThatThrownBy(() -> new Product(shirts, "SKU-2", "Shirt C", "shirt-c", null, -1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }
