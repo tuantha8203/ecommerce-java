@@ -1,0 +1,15 @@
+spring:
+    application:
+        name: shop
+    docker:
+        compose:
+            lifecycle-management: start-only   # tắt app không tắt DB, khởi động lại nhanh hơn
+    jpa:
+        open-in-view: false
+        hibernate:
+            ddl-auto: validate                 # schema chỉ thay đổi qua Flyway
+
+management:
+    endpoint:
+        health:
+            show-details: always               # dev: xem được trạng thái DB trong /actuator/health
