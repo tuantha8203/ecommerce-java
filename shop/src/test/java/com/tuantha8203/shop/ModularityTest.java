@@ -9,13 +9,13 @@ class ModularityTest {
     static final ApplicationModules modules = ApplicationModules.of(ShopApplication.class);
 
     @Test
-    void kiemTraRanhGioiModule() {
+    void verifiesModuleBoundaries() {
         modules.forEach(System.out::println); // in ra các module Modulith phát hiện được
         modules.verify();
     }
 
     @Test
-    void sinhTaiLieuModule() {
+    void writesModuleDocumentation() {
         new Documenter(modules).writeDocumentation();
     }
 }

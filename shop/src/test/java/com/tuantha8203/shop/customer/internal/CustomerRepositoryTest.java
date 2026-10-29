@@ -27,36 +27,36 @@ class CustomerRepositoryTest {
     EntityManager em;
 
     @Test
-    void timTheoEmailKhongPhanBietHoaThuong() {
-        customers.saveAndFlush(new Customer("An@Mail.com", "Nguyễn An", null));
+    void findsByEmailIgnoringCase() {
+        customers.saveAndFlush(new Customer("An@Mail.com", "An Nguyen", null));
 
         assertThat(customers.findByEmail("AN@MAIL.COM")).isPresent();
     }
 
     @Test
-    void emailTrungKhacHoaThuongBiDatabaseTuChoi() {
-        customers.saveAndFlush(new Customer("an@mail.com", "An", null));
+    void rejectsDuplicateEmailWithDifferentCase() {
+        customers.saveAndFlush(new Customer("an@mail.com", "An Nguyen", null));
 
-        assertThatThrownBy(() -> customers.saveAndFlush(new Customer("AN@mail.com ", "An 2", null)))
+        assertThatThrownBy(() -> customers.saveAndFlush(new Customer("AN@mail.com ", "An Tran", null)))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
-    void diaChiDauTienTuDongLaMacDinh() {
-        Customer an = new Customer("an@mail.com", "An", null);
-        an.addAddress("An", "0900000001", "1 Lê Lợi", "Phường Bến Thành", "TP Hồ Chí Minh");
-        an.addAddress("An", "0900000001", "2 Hai Bà Trưng", "Phường Sài Gòn", "TP Hồ Chí Minh");
+    void firstAddressBecomesDefault() {
+        Customer an = new Customer("an@mail.com", "An Nguyen", null);
+        an.addAddress("An Nguyen", "0900000001", "1 Le Loi", "Ben Thanh Ward", "Ho Chi Minh City");
+        an.addAddress("An Nguyen", "0900000001", "2 Hai Ba Trung", "Sai Gon Ward", "Ho Chi Minh City");
         customers.saveAndFlush(an);
 
         assertThat(an.getAddresses()).filteredOn(Address::isDefault).hasSize(1);
-        assertThat(an.defaultAddress()).get().extracting(Address::getStreet).isEqualTo("1 Lê Lợi");
+        assertThat(an.defaultAddress()).get().extracting(Address::getStreet).isEqualTo("1 Le Loi");
     }
 
     @Test
-    void doiDiaChiMacDinhVanChiCoMotMacDinh() {
-        Customer an = new Customer("an@mail.com", "An", null);
-        an.addAddress("An", "0900000001", "1 Lê Lợi", "Phường Bến Thành", "TP Hồ Chí Minh");
-        Address second = an.addAddress("An", "0900000001", "2 Hai Bà Trưng", "Phường Sài Gòn", "TP Hồ Chí Minh");
+    void changingDefaultAddressKeepsExactlyOneDefault() {
+        Customer an = new Customer("an@mail.com", "An Nguyen", null);
+        an.addAddress("An Nguyen", "0900000001", "1 Le Loi", "Ben Thanh Ward", "Ho Chi Minh City");
+        Address second = an.addAddress("An Nguyen", "0900000001", "2 Hai Ba Trung", "Sai Gon Ward", "Ho Chi Minh City");
         customers.saveAndFlush(an);
         long customerId = an.getId();
         long secondId = second.getId();
