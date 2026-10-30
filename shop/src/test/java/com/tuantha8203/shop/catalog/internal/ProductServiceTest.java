@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.tuantha8203.shop.catalog.ProductStatus;
+import com.tuantha8203.shop.shared.PreconditionFailedException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,20 +64,30 @@ class ProductServiceTest {
     }
 
     @Test
-    void getBySlugThrowsWhenProductDoesNotExist() {
-        when(products.findBySlug("missing")).thenReturn(Optional.empty());
+    void publishedLookupHidesDraftProducts() {
+        Product draft = new Product(shirts, "SKU-1", "T-shirt", "t-shirt", null, 150_000);
+        when(products.findBySlug("t-shirt")).thenReturn(Optional.of(draft));
 
-        assertThatThrownBy(() -> service.getBySlug("missing")).isInstanceOf(ProductNotFoundException.class);
+        assertThatThrownBy(() -> service.getPublishedBySlug("t-shirt")).isInstanceOf(ProductNotFoundException.class);
     }
 
     @Test
-    void updateChangesNameDescriptionAndPrice() {
+    void updateChangesDetailsWhenVersionMatches() {
         Product product = new Product(shirts, "SKU-1", "T-shirt", "t-shirt", null, 150_000);
         when(products.findById(10L)).thenReturn(Optional.of(product));
 
-        ProductDetails updated = service.update(10L, new UpdateProductRequest("Polo shirt", "Cotton", 199_000));
+        ProductDetails updated = service.update(10L, 0L, new UpdateProductRequest("Polo shirt", "Cotton", 199_000));
 
         assertThat(updated.name()).isEqualTo("Polo shirt");
         assertThat(updated.price()).isEqualTo(199_000);
+    }
+
+    @Test
+    void updateRejectsStaleVersion() {
+        Product product = new Product(shirts, "SKU-1", "T-shirt", "t-shirt", null, 150_000);
+        when(products.findById(10L)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> service.update(10L, 5L, new UpdateProductRequest("Polo shirt", null, 199_000)))
+                .isInstanceOf(PreconditionFailedException.class);
     }
 }

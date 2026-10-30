@@ -1,7 +1,9 @@
 package com.tuantha8203.shop.catalog.internal;
 
 import com.tuantha8203.shop.catalog.CatalogApi;
+import com.tuantha8203.shop.catalog.ProductStatus;
 import com.tuantha8203.shop.catalog.ProductSummary;
+import com.tuantha8203.shop.shared.PreconditionFailedException;
 import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -33,19 +35,24 @@ public class ProductService implements CatalogApi {
         return ProductDetails.from(products.save(product));
     }
 
-    public ProductDetails getBySlug(String slug) {
-        return products.findBySlug(slug)
-                .map(ProductDetails::from)
-                .orElseThrow(() -> new ProductNotFoundException(slug));
-    }
-
     public ProductDetails getById(long id) {
         return ProductDetails.from(load(id));
     }
 
+    public ProductDetails getPublishedBySlug(String slug) {
+        return products.findBySlug(slug)
+                .filter(product -> product.getStatus() == ProductStatus.ACTIVE)
+                .map(ProductDetails::from)
+                .orElseThrow(() -> new ProductNotFoundException(slug)); // drafts look exactly like missing products
+    }
+
     @Transactional
-    public ProductDetails update(long id, UpdateProductRequest request) {
+    public ProductDetails update(long id, long expectedVersion, UpdateProductRequest request) {
         Product product = load(id);
+        if (product.getVersion() != expectedVersion) {
+            throw new PreconditionFailedException(
+                    "Product " + id + " was modified (current version " + product.getVersion() + ")");
+        }
         product.updateDetails(request.name(), request.description(), request.price());
         products.flush(); // write now so @Version is incremented before we read it into the DTO
         return ProductDetails.from(product);

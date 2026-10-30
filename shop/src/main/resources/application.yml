@@ -8,6 +8,9 @@ spring:
         open-in-view: false
         hibernate:
             ddl-auto: validate                 # schema chỉ thay đổi qua Flyway
+    mvc:
+        problemdetails:
+            enabled: true
 
 management:
     endpoint:
