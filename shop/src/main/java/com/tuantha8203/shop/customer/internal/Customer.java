@@ -65,16 +65,38 @@ public class Customer {
         return addresses.stream().filter(Address::isDefault).findFirst();
     }
 
-    // Hai method dưới chỉ dành cho CustomerService (cùng package), phải gọi đúng thứ tự kèm flush
+    public void updateProfile(String fullName, String phone) {
+        this.fullName = fullName;
+        this.phone = phone;
+    }
+
+    // The methods below are only for CustomerService (same package).
+    // Each change to the default address needs a flush in between; see CustomerService.
+
     void clearDefaultAddress() {
         addresses.forEach(Address::unmarkDefault);
     }
 
     void markDefault(long addressId) {
-        addresses.stream()
-                .filter(a -> a.getId() == addressId)
+        findAddress(addressId).markDefault();
+    }
+
+    /** Removes the address and reports whether it was the default one. */
+    boolean removeAddress(long addressId) {
+        Address address = findAddress(addressId);
+        addresses.remove(address); // orphanRemoval = true turns this into a DELETE
+        return address.isDefault();
+    }
+
+    void promoteFirstAddressToDefault() {
+        addresses.stream().findFirst().ifPresent(Address::markDefault);
+    }
+
+    /** Looking up through this customer's own collection is what prevents touching someone else's address. */
+    private Address findAddress(long addressId) {
+        return addresses.stream()
+                .filter(address -> Long.valueOf(addressId).equals(address.getId()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Địa chỉ " + addressId + " không thuộc khách này"))
-                .markDefault();
+                .orElseThrow(() -> new AddressNotFoundException(addressId));
     }
 }
