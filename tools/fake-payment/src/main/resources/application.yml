@@ -1,0 +1,21 @@
+server:
+    port: 9090
+
+spring:
+    application:
+        name: fake-payment
+    mvc:
+        problemdetails:
+            enabled: true
+
+fake-payment:
+    webhook-url: http://localhost:8080/api/v1/payments/webhook
+    webhook-secret: dev-webhook-secret   # ShopX must use the same secret to verify signatures
+    chaos:
+        min-latency-ms: 50
+        max-latency-ms: 300
+        failure-rate: 0.0          # 0.0 = never, 1.0 = always
+        decline-rate: 0.0
+        lost-response-rate: 0.0
+        lost-response-delay-ms: 10000
+        duplicate-webhook-rate: 0.0
