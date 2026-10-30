@@ -1,0 +1,20 @@
+@baseUrl = http://localhost:8080
+@customerId = 1
+
+### Place order (cart and default address must exist; see cart.http and customer.http)
+POST {{baseUrl}}/api/v1/orders
+X-Customer-Id: {{customerId}}
+Idempotency-Key: demo-order-1
+
+### Same key again: 200 with the same order
+POST {{baseUrl}}/api/v1/orders
+X-Customer-Id: {{customerId}}
+Idempotency-Key: demo-order-1
+
+### My orders
+GET {{baseUrl}}/api/v1/orders
+X-Customer-Id: {{customerId}}
+
+### Cancel (replace 1 with the order id)
+POST {{baseUrl}}/api/v1/orders/1/cancellation
+X-Customer-Id: {{customerId}}
