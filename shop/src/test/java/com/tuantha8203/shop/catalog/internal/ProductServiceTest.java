@@ -9,12 +9,15 @@ import static org.mockito.Mockito.when;
 
 import com.tuantha8203.shop.catalog.ProductStatus;
 import com.tuantha8203.shop.shared.PreconditionFailedException;
+import java.sql.SQLException;
 import java.util.Optional;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
@@ -38,7 +41,7 @@ class ProductServiceTest {
     void createsProductInDraftStatus() {
         when(categories.findById(1L)).thenReturn(Optional.of(shirts));
         when(products.existsBySku("SKU-1")).thenReturn(false);
-        when(products.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(products.saveAndFlush(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ProductDetails created = service.create(request("SKU-1"));
 
@@ -53,7 +56,7 @@ class ProductServiceTest {
         when(products.existsBySku("SKU-1")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request("SKU-1"))).isInstanceOf(DuplicateSkuException.class);
-        verify(products, never()).save(any());
+        verify(products, never()).saveAndFlush(any());
     }
 
     @Test
@@ -89,5 +92,28 @@ class ProductServiceTest {
 
         assertThatThrownBy(() -> service.update(10L, 5L, new UpdateProductRequest("Polo shirt", null, 199_000)))
                 .isInstanceOf(PreconditionFailedException.class);
+    }
+
+    @Test
+    void translatesSlugConstraintViolationIntoBusinessException() {
+        when(categories.findById(1L)).thenReturn(Optional.of(shirts));
+        when(products.existsBySku("SKU-1")).thenReturn(false);
+        when(products.saveAndFlush(any(Product.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "duplicate key",
+                        new ConstraintViolationException("duplicate key", new SQLException(), "uq_products_slug")));
+
+        assertThatThrownBy(() -> service.create(request("SKU-1"))).isInstanceOf(DuplicateProductSlugException.class);
+    }
+
+    @Test
+    void leavesUnknownConstraintViolationsUntouched() {
+        when(categories.findById(1L)).thenReturn(Optional.of(shirts));
+        when(products.existsBySku("SKU-1")).thenReturn(false);
+        when(products.saveAndFlush(any(Product.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "fk", new ConstraintViolationException("fk", new SQLException(), "some_other_constraint")));
+
+        assertThatThrownBy(() -> service.create(request("SKU-1"))).isInstanceOf(DataIntegrityViolationException.class);
     }
 }

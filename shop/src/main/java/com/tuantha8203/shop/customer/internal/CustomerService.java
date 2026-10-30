@@ -1,7 +1,9 @@
 package com.tuantha8203.shop.customer.internal;
 
+import com.tuantha8203.shop.shared.ConstraintViolations;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,8 +20,18 @@ public class CustomerService {
         if (customers.findByEmail(request.email()).isPresent()) {
             throw new EmailAlreadyRegisteredException(request.email());
         }
-        Customer saved = customers.save(new Customer(request.email(), request.fullName(), request.phone()));
-        return CustomerProfile.from(saved);
+        try {
+            Customer saved = customers.saveAndFlush(new Customer(request.email(), request.fullName(), request.phone()));
+            return CustomerProfile.from(saved);
+        } catch (DataIntegrityViolationException ex) {
+            // Two concurrent registrations with the same email both passed the check above
+            if (ConstraintViolations.constraintName(ex)
+                    .filter("uq_customers_email_lower"::equals)
+                    .isPresent()) {
+                throw new EmailAlreadyRegisteredException(request.email());
+            }
+            throw ex;
+        }
     }
 
     public CustomerProfile getProfile(long customerId) {

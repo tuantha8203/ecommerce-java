@@ -1,7 +1,9 @@
 package com.tuantha8203.shop.catalog.internal;
 
+import com.tuantha8203.shop.shared.ConstraintViolations;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +28,16 @@ public class CategoryService {
                 : categories
                         .findById(request.parentId())
                         .orElseThrow(() -> new CategoryNotFoundException(request.parentId()));
-        Category saved = categories.save(new Category(request.name(), request.slug(), parent));
-        return CategoryView.from(saved);
+        try {
+            Category saved = categories.saveAndFlush(new Category(request.name(), request.slug(), parent));
+            return CategoryView.from(saved);
+        } catch (DataIntegrityViolationException ex) {
+            if (ConstraintViolations.constraintName(ex)
+                    .filter("uq_categories_slug"::equals)
+                    .isPresent()) {
+                throw new DuplicateCategorySlugException(request.slug());
+            }
+            throw ex;
+        }
     }
 }
