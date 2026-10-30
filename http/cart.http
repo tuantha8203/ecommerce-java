@@ -1,0 +1,24 @@
+@baseUrl = http://localhost:8080
+@customerId = 1
+
+### Put 2 units of product 1 in the cart (product must be ACTIVE; seed products mostly are)
+PUT {{baseUrl}}/api/v1/cart/items/1
+X-Customer-Id: {{customerId}}
+Content-Type: application/json
+
+{ "quantity": 2 }
+
+### Same request again: still 2, not 4
+PUT {{baseUrl}}/api/v1/cart/items/1
+X-Customer-Id: {{customerId}}
+Content-Type: application/json
+
+{ "quantity": 2 }
+
+### View cart
+GET {{baseUrl}}/api/v1/cart
+X-Customer-Id: {{customerId}}
+
+### Remove
+DELETE {{baseUrl}}/api/v1/cart/items/1
+X-Customer-Id: {{customerId}}
