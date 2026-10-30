@@ -1,7 +1,10 @@
 package com.tuantha8203.shop.customer.internal;
 
+import com.tuantha8203.shop.customer.CustomerApi;
+import com.tuantha8203.shop.customer.ShippingAddress;
 import com.tuantha8203.shop.shared.ConstraintViolations;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -10,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class CustomerService {
+public class CustomerService implements CustomerApi {
 
     private final CustomerRepository customers;
 
@@ -62,8 +65,8 @@ public class CustomerService {
     public void changeDefaultAddress(long customerId, long addressId) {
         Customer customer = load(customerId);
         customer.clearDefaultAddress();
-        customers.flush(); // force the UPDATE clearing the old default to run FIRST, otherwise the unique index may
-        // reject it
+        // force the UPDATE clearing the old default to run FIRST, otherwise the unique index may reject it
+        customers.flush();
         customer.markDefault(addressId);
     }
 
@@ -78,6 +81,20 @@ public class CustomerService {
         if (wasDefault) {
             customer.promoteFirstAddressToDefault();
         }
+    }
+
+    /** Used by other modules (ordering) through CustomerApi. */
+    @Override
+    public Optional<ShippingAddress> findDefaultAddress(long customerId) {
+        return customers
+                .findById(customerId)
+                .flatMap(Customer::defaultAddress)
+                .map(address -> new ShippingAddress(
+                        address.getReceiverName(),
+                        address.getPhone(),
+                        address.getStreet(),
+                        address.getWard(),
+                        address.getProvince()));
     }
 
     private Customer load(long customerId) {
