@@ -54,3 +54,19 @@ POST {{baseUrl}}/api/v1/admin/products
 Content-Type: application/json
 
 { "categoryId": {{createCategory.response.body.$.id}}, "sku": "TSHIRT-001", "name": "Copy", "slug": "copy", "price": 1 }
+
+### Public listing, first page
+# @name firstPage
+GET {{baseUrl}}/api/v1/products?limit=5
+
+### Next page (paste nextCursor from the response above, or use the reference)
+GET {{baseUrl}}/api/v1/products?limit=5&after={{firstPage.response.body.$.nextCursor}}
+
+### Public listing filtered by category
+GET {{baseUrl}}/api/v1/products?category=seed-category-7&limit=5
+
+### Admin listing, offset
+GET {{baseUrl}}/api/v1/admin/products?page=0&size=20&status=DRAFT
+
+### Admin listing, deep page (watch the response time with seed data)
+GET {{baseUrl}}/api/v1/admin/products?page=9000&size=20
