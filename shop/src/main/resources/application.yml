@@ -16,3 +16,9 @@ management:
     endpoint:
         health:
             show-details: always               # dev: xem được trạng thái DB trong /actuator/health
+
+ecommerce-java:
+    inventory:
+        reservation-ttl: PT15M         # how long reserved units stay held for an unpaid order
+        expiry-check-interval: PT30S
+        expiry-batch-size: 100
