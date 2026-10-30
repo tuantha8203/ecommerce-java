@@ -1,0 +1,56 @@
+@baseUrl = http://localhost:8080
+
+### Create a category
+# @name createCategory
+POST {{baseUrl}}/api/v1/admin/categories
+Content-Type: application/json
+
+{ "name": "Shirts", "slug": "shirts" }
+
+### List categories
+GET {{baseUrl}}/api/v1/categories
+
+### Create a product (uses the id returned above)
+# @name createProduct
+POST {{baseUrl}}/api/v1/admin/products
+Content-Type: application/json
+
+{
+  "categoryId": {{createCategory.response.body.$.id}},
+  "sku": "TSHIRT-001",
+  "name": "Basic T-shirt",
+  "slug": "basic-t-shirt",
+  "description": "100% cotton",
+  "price": 150000
+}
+
+### Public page: 404 while the product is still a draft
+GET {{baseUrl}}/api/v1/products/basic-t-shirt
+
+### Activate
+POST {{baseUrl}}/api/v1/admin/products/{{createProduct.response.body.$.id}}/activation
+
+### Public page: 200 now
+GET {{baseUrl}}/api/v1/products/basic-t-shirt
+
+### Admin view (look at the ETag response header)
+GET {{baseUrl}}/api/v1/admin/products/{{createProduct.response.body.$.id}}
+
+### Update: If-Match must be the current version (1 after activation)
+PUT {{baseUrl}}/api/v1/admin/products/{{createProduct.response.body.$.id}}
+If-Match: "1"
+Content-Type: application/json
+
+{ "name": "Basic T-shirt v2", "description": "100% cotton", "price": 159000 }
+
+### Validation error: blank name, negative price
+POST {{baseUrl}}/api/v1/admin/products
+Content-Type: application/json
+
+{ "categoryId": 1, "sku": "BAD", "name": "", "slug": "bad", "price": -1 }
+
+### Duplicate SKU: 409
+POST {{baseUrl}}/api/v1/admin/products
+Content-Type: application/json
+
+{ "categoryId": {{createCategory.response.body.$.id}}, "sku": "TSHIRT-001", "name": "Copy", "slug": "copy", "price": 1 }
