@@ -31,3 +31,5 @@ ecommerce-java:
         give-up-after: PT10M
     ordering:
         payment-timeout: PT30M
+    reporting:
+        zone: Asia/Ho_Chi_Minh   # the business day starts at midnight in this time zone
