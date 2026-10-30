@@ -1,49 +1,56 @@
 @baseUrl = http://localhost:8080
 
-### Register
-# @name register
-POST {{baseUrl}}/api/v1/customers
+### Create a category
+# @name createCategory
+POST {{baseUrl}}/api/v1/admin/categories
 Content-Type: application/json
 
-{ "email": "an@mail.com", "fullName": "An Nguyen", "phone": "0900000001" }
+{ "name": "Shirts", "slug": "shirts" }
 
-@customerId = {{register.response.body.$.id}}
+### List categories
+GET {{baseUrl}}/api/v1/categories
 
-### My profile
-GET {{baseUrl}}/api/v1/customers/me
-X-Customer-Id: {{customerId}}
-
-### Update profile (the email field is ignored)
-PUT {{baseUrl}}/api/v1/customers/me
-X-Customer-Id: {{customerId}}
+### Create a product (uses the id returned above)
+# @name createProduct
+POST {{baseUrl}}/api/v1/admin/products
 Content-Type: application/json
 
-{ "fullName": "An Tran", "phone": "0911111111", "email": "hacker@mail.com" }
+{
+  "categoryId": {{createCategory.response.body.$.id}},
+  "sku": "TSHIRT-001",
+  "name": "Basic T-shirt",
+  "slug": "basic-t-shirt",
+  "description": "100% cotton",
+  "price": 150000
+}
 
-### Add first address (becomes default)
-# @name addFirst
-POST {{baseUrl}}/api/v1/customers/me/addresses
-X-Customer-Id: {{customerId}}
+### Public page: 404 while the product is still a draft
+GET {{baseUrl}}/api/v1/products/basic-t-shirt
+
+### Activate
+POST {{baseUrl}}/api/v1/admin/products/{{createProduct.response.body.$.id}}/activation
+
+### Public page: 200 now
+GET {{baseUrl}}/api/v1/products/basic-t-shirt
+
+### Admin view (look at the ETag response header)
+GET {{baseUrl}}/api/v1/admin/products/{{createProduct.response.body.$.id}}
+
+### Update: If-Match must be the current version (1 after activation)
+PUT {{baseUrl}}/api/v1/admin/products/{{createProduct.response.body.$.id}}
+If-Match: "1"
 Content-Type: application/json
 
-{ "receiverName": "An Nguyen", "phone": "0900000001", "street": "1 Le Loi", "ward": "Ben Thanh Ward", "province": "Ho Chi Minh City" }
+{ "name": "Basic T-shirt v2", "description": "100% cotton", "price": 159000 }
 
-### Add second address
-# @name addSecond
-POST {{baseUrl}}/api/v1/customers/me/addresses
-X-Customer-Id: {{customerId}}
+### Validation error: blank name, negative price
+POST {{baseUrl}}/api/v1/admin/products
 Content-Type: application/json
 
-{ "receiverName": "An Nguyen", "phone": "0900000001", "street": "2 Hai Ba Trung", "ward": "Sai Gon Ward", "province": "Ho Chi Minh City" }
+{ "categoryId": 1, "sku": "BAD", "name": "", "slug": "bad", "price": -1 }
 
-### Make the second one default
-POST {{baseUrl}}/api/v1/customers/me/addresses/{{addSecond.response.body.$.id}}/default
-X-Customer-Id: {{customerId}}
+### Duplicate SKU: 409
+POST {{baseUrl}}/api/v1/admin/products
+Content-Type: application/json
 
-### List addresses
-GET {{baseUrl}}/api/v1/customers/me/addresses
-X-Customer-Id: {{customerId}}
-
-### Delete the default one: the first address becomes default again
-DELETE {{baseUrl}}/api/v1/customers/me/addresses/{{addSecond.response.body.$.id}}
-X-Customer-Id: {{customerId}}
+{ "categoryId": {{createCategory.response.body.$.id}}, "sku": "TSHIRT-001", "name": "Copy", "slug": "copy", "price": 1 }

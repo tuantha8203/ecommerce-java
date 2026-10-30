@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:8080
+
+### Register
+# @name register
+POST {{baseUrl}}/api/v1/customers
+Content-Type: application/json
+
+{ "email": "an@mail.com", "fullName": "An Nguyen", "phone": "0900000001" }
+
+@customerId = {{register.response.body.$.id}}
+
+### My profile
+GET {{baseUrl}}/api/v1/customers/me
+X-Customer-Id: {{customerId}}
+
+### Update profile (the email field is ignored)
+PUT {{baseUrl}}/api/v1/customers/me
+X-Customer-Id: {{customerId}}
+Content-Type: application/json
+
+{ "fullName": "An Tran", "phone": "0911111111", "email": "hacker@mail.com" }
+
+### Add first address (becomes default)
+# @name addFirst
+POST {{baseUrl}}/api/v1/customers/me/addresses
+X-Customer-Id: {{customerId}}
+Content-Type: application/json
+
+{ "receiverName": "An Nguyen", "phone": "0900000001", "street": "1 Le Loi", "ward": "Ben Thanh Ward", "province": "Ho Chi Minh City" }
+
+### Add second address
+# @name addSecond
+POST {{baseUrl}}/api/v1/customers/me/addresses
+X-Customer-Id: {{customerId}}
+Content-Type: application/json
+
+{ "receiverName": "An Nguyen", "phone": "0900000001", "street": "2 Hai Ba Trung", "ward": "Sai Gon Ward", "province": "Ho Chi Minh City" }
+
+### Make the second one default
+POST {{baseUrl}}/api/v1/customers/me/addresses/{{addSecond.response.body.$.id}}/default
+X-Customer-Id: {{customerId}}
+
+### List addresses
+GET {{baseUrl}}/api/v1/customers/me/addresses
+X-Customer-Id: {{customerId}}
+
+### Delete the default one: the first address becomes default again
+DELETE {{baseUrl}}/api/v1/customers/me/addresses/{{addSecond.response.body.$.id}}
+X-Customer-Id: {{customerId}}

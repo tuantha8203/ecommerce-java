@@ -3,10 +3,12 @@ package com.tuantha8203.shop.catalog.internal;
 import com.tuantha8203.shop.catalog.CatalogApi;
 import com.tuantha8203.shop.catalog.ProductStatus;
 import com.tuantha8203.shop.catalog.ProductSummary;
+import com.tuantha8203.shop.shared.ConstraintViolations;
 import com.tuantha8203.shop.shared.PreconditionFailedException;
 import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +34,20 @@ public class ProductService implements CatalogApi {
 
         Product product = new Product(
                 category, request.sku(), request.name(), request.slug(), request.description(), request.price());
-        return ProductDetails.from(products.save(product));
+        try {
+            return ProductDetails.from(products.saveAndFlush(product));
+        } catch (DataIntegrityViolationException ex) {
+            throw translate(ex, request);
+        }
+    }
+
+    /** Turns a known constraint violation into a business error; anything else stays as it is. */
+    private static RuntimeException translate(DataIntegrityViolationException ex, CreateProductRequest request) {
+        return switch (ConstraintViolations.constraintName(ex).orElse("")) {
+            case "uq_products_sku" -> new DuplicateSkuException(request.sku());
+            case "uq_products_slug" -> new DuplicateProductSlugException(request.slug());
+            default -> ex;
+        };
     }
 
     public ProductDetails getById(long id) {

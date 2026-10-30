@@ -83,4 +83,65 @@ class CatalogApiIntegrationTest {
                                 """))
                 .andExpect(status().isPreconditionFailed());
     }
+
+    @Test
+    void duplicateCategorySlugReturns409() throws Exception {
+        String body = """
+                {"name": "Shoes", "slug": "shoes-%s"}
+                """.formatted(UUID.randomUUID().toString().substring(0, 8));
+
+        mvc.perform(post("/api/v1/admin/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/v1/admin/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict())
+                .andExpect(
+                        jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Category slug already exists")));
+    }
+
+    @Test
+    void duplicateProductSlugIsCaughtByTheDatabaseAndReturns409() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String categoryJson = mvc.perform(post("/api/v1/admin/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name": "Bags", "slug": "bags-%s"}
+                                """.formatted(suffix)))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        int categoryId = JsonPath.read(categoryJson, "$.id");
+
+        String product = """
+                {"categoryId": %d, "sku": "%s", "name": "Bag", "slug": "bag-%s", "price": 1}
+                """;
+        mvc.perform(post("/api/v1/admin/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(product.formatted(categoryId, "BAG-A-" + suffix.toUpperCase(), suffix)))
+                .andExpect(status().isCreated());
+
+        // different SKU, same slug: no early check exists for slugs, only the unique constraint
+        mvc.perform(post("/api/v1/admin/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(product.formatted(categoryId, "BAG-B-" + suffix.toUpperCase(), suffix)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Product slug already exists")));
+    }
+
+    @Test
+    void validationErrorListsEveryInvalidField() throws Exception {
+        mvc.perform(post("/api/v1/admin/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"categoryId": 1, "sku": "lowercase", "name": "", "slug": "OK", "price": -1}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors[*].field")
+                        .value(org.hamcrest.Matchers.containsInAnyOrder("sku", "name", "slug", "price")));
+    }
 }
