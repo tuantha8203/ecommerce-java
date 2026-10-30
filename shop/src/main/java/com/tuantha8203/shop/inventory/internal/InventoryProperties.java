@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
-@ConfigurationProperties("shopx.inventory")
+@ConfigurationProperties("ecommerce-java.inventory")
 public record InventoryProperties(
         @DefaultValue("PT15M") Duration reservationTtl,
         @DefaultValue("PT30S") Duration expiryCheckInterval,

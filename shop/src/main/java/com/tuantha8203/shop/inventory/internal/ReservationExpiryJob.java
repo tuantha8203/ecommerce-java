@@ -15,7 +15,7 @@ class ReservationExpiryJob {
     private final InventoryProperties properties;
     private final Clock clock;
 
-    @Scheduled(fixedDelayString = "${shopx.inventory.expiry-check-interval:PT30S}")
+    @Scheduled(fixedDelayString = "${ecommerce-java.inventory.expiry-check-interval:PT30S}")
     void releaseExpiredReservations() {
         int total = 0;
         int released;

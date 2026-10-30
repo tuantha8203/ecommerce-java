@@ -1,6 +1,7 @@
 package com.tuantha8203.shop.ordering.internal;
 
 import com.tuantha8203.shop.inventory.InventoryApi;
+import com.tuantha8203.shop.payment.PaymentApi;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,13 +17,9 @@ public class OrderService {
     private final OrderPlacement placement;
     private final IdempotencyKeys idempotencyKeys;
     private final InventoryApi inventory;
+    private final PaymentApi payments;
 
-    /**
-     * Deliberately NOT @Transactional: it coordinates several separate transactions
-     * (claim the key, create the order, release the key on failure). In step 2.6 the
-     * payment call will also go here, outside any transaction.
-     */
-    public PlacementResult placeOrder(long customerId, String idempotencyKey) {
+    public PlacementResult placeOrder(long customerId, String idempotencyKey, String paymentToken) {
         IdempotencyKeys.Claim claim = idempotencyKeys.claim(customerId, idempotencyKey);
         switch (claim.state()) {
             case COMPLETED -> {
@@ -30,15 +27,43 @@ public class OrderService {
             }
             case IN_PROGRESS -> throw new RequestInProgressException();
             case CLAIMED -> {
+                OrderView created;
                 try {
-                    return new PlacementResult(placement.place(customerId, idempotencyKey), true);
+                    created = placement.place(customerId, idempotencyKey);
                 } catch (RuntimeException ex) {
                     idempotencyKeys.release(customerId, idempotencyKey);
                     throw ex;
                 }
+                // No transaction is open here: holding a database connection while waiting
+                // for the gateway would exhaust the connection pool as soon as the gateway slows down
+                payments.charge(Order.referenceOf(created.id()), created.total(), paymentToken);
+                // PaymentEventsListener has already applied the outcome to the order: read its fresh state
+                return new PlacementResult(getOrder(customerId, created.id()), true);
             }
         }
         throw new IllegalStateException("Unknown claim state: " + claim.state());
+    }
+
+    @Transactional
+    public OrderView cancelByAdmin(long orderId, String reason) {
+        Order order = load(orderId);
+        boolean wasPaid = order.getStatus() == OrderStatus.PAID;
+        order.cancel(reason);
+        inventory.release(order.reference());
+        if (wasPaid) {
+            payments.requestRefund(order.reference());
+        }
+        return OrderView.from(order);
+    }
+
+    /** Called by the expiry job, one order per transaction. */
+    @Transactional
+    public void expire(long orderId) {
+        Order order = load(orderId);
+        if (order.getStatus() == OrderStatus.PENDING_PAYMENT) { // it may have been paid meanwhile
+            order.cancel("Payment not completed in time");
+            inventory.release(order.reference());
+        }
     }
 
     @Transactional(readOnly = true)
@@ -76,15 +101,6 @@ public class OrderService {
     public OrderView deliver(long orderId) {
         Order order = load(orderId);
         order.deliver();
-        return OrderView.from(order);
-    }
-
-    @Transactional
-    public OrderView cancelByAdmin(long orderId, String reason) {
-        Order order = load(orderId);
-        order.cancel(reason);
-        inventory.release(order.reference());
-        // step 2.6: a PAID order also needs a refund here
         return OrderView.from(order);
     }
 

@@ -18,6 +18,7 @@ import com.tuantha8203.shop.customer.internal.AddAddressRequest;
 import com.tuantha8203.shop.customer.internal.CustomerService;
 import com.tuantha8203.shop.customer.internal.RegisterCustomerRequest;
 import com.tuantha8203.shop.inventory.internal.InventoryService;
+import com.tuantha8203.shop.payment.internal.PaymentService;
 import com.tuantha8203.shop.shared.CallerHeaders;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -50,6 +52,9 @@ class OrderPlacementIntegrationTest {
 
     @Autowired
     CartService cartService;
+
+    @MockitoBean
+    PaymentService paymentService; // payment is tested separately; here orders stay PENDING_PAYMENT
 
     // --- test data helpers (test code may use other modules' internals) ---
 

@@ -17,4 +17,10 @@ public interface InventoryApi {
 
     /** Units that can still be sold, per product. Unknown products report 0. */
     Map<Long, Integer> availability(Collection<Long> productIds);
+
+    /**
+     * The order was paid: keep the units held with no expiry.
+     * Returns false if the reservation already expired; the caller must then cancel and refund.
+     */
+    boolean confirm(String orderRef);
 }

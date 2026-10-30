@@ -1,5 +1,6 @@
 package com.tuantha8203.shop.ordering.internal;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -17,4 +18,6 @@ interface OrderRepository extends JpaRepository<Order, Long> {
 
     // No lines here: fetching a collection together with a row limit is what we made fail on purpose
     List<Order> findTop50ByCustomerIdOrderByCreatedAtDescIdDesc(long customerId);
+
+    List<Order> findTop100ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(OrderStatus status, Instant before);
 }
