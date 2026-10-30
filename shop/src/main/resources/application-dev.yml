@@ -1,0 +1,7 @@
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev-data   # dev also runs the seed script
+
+logging:
+  level:
+    org.hibernate.SQL: debug   # see every SQL statement Hibernate sends

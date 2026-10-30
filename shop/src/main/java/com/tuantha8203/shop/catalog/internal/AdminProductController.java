@@ -1,7 +1,12 @@
 package com.tuantha8203.shop.catalog.internal;
 
+import com.tuantha8203.shop.catalog.ProductStatus;
+import com.tuantha8203.shop.catalog.ProductSummary;
+import com.tuantha8203.shop.shared.PageResponse;
 import com.tuantha8203.shop.shared.PreconditionFailedException;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -63,6 +69,14 @@ class AdminProductController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void archive(@PathVariable long id) {
         products.archive(id);
+    }
+
+    @GetMapping
+    PageResponse<ProductSummary> list(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(required = false) ProductStatus status) {
+        return products.listForAdmin(status, page, size);
     }
 
     /** Accepts "3", "\"3\"" and W/"3". */

@@ -4,11 +4,17 @@ import com.tuantha8203.shop.catalog.CatalogApi;
 import com.tuantha8203.shop.catalog.ProductStatus;
 import com.tuantha8203.shop.catalog.ProductSummary;
 import com.tuantha8203.shop.shared.ConstraintViolations;
+import com.tuantha8203.shop.shared.CursorPage;
+import com.tuantha8203.shop.shared.PageResponse;
 import com.tuantha8203.shop.shared.PreconditionFailedException;
 import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +25,7 @@ public class ProductService implements CatalogApi {
 
     private final ProductRepository products;
     private final CategoryRepository categories;
+    private final ProductListingQueries listingQueries;
 
     @Transactional
     public ProductDetails create(CreateProductRequest request) {
@@ -71,6 +78,27 @@ public class ProductService implements CatalogApi {
         product.updateDetails(request.name(), request.description(), request.price());
         products.flush(); // write now so @Version is incremented before we read it into the DTO
         return ProductDetails.from(product);
+    }
+
+    /** Public listing with cursor pagination. */
+    public CursorPage<ProductCard> listPublished(String categorySlug, String afterToken, int limit) {
+        ProductCursor after = afterToken == null ? null : ProductCursor.decode(afterToken);
+
+        // Ask for one extra row: if it exists, there is a next page
+        List<ProductListingQueries.Row> rows = listingQueries.findPublished(categorySlug, after, limit + 1);
+        boolean hasMore = rows.size() > limit;
+        List<ProductListingQueries.Row> page = hasMore ? rows.subList(0, limit) : rows;
+
+        String nextCursor = hasMore ? page.getLast().position().encode() : null;
+        return new CursorPage<>(
+                page.stream().map(ProductListingQueries.Row::card).toList(), nextCursor);
+    }
+
+    /** Admin listing with offset pagination: random access to any page, plus a total count. */
+    public PageResponse<ProductSummary> listForAdmin(ProductStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("id")));
+        Page<Product> result = status == null ? products.findAll(pageable) : products.findByStatus(status, pageable);
+        return PageResponse.from(result.map(ProductService::toSummary));
     }
 
     @Transactional
