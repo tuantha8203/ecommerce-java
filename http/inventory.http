@@ -1,0 +1,16 @@
+@baseUrl = http://localhost:8080
+
+### Set stock for a product (use an id from catalog.http or the seed data)
+PUT {{baseUrl}}/api/v1/admin/inventory/1
+Content-Type: application/json
+
+{ "onHand": 50 }
+
+### Read stock
+GET {{baseUrl}}/api/v1/admin/inventory/1
+
+### Unknown product: 404
+PUT {{baseUrl}}/api/v1/admin/inventory/999999999
+Content-Type: application/json
+
+{ "onHand": 5 }
