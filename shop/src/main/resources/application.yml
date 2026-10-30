@@ -22,3 +22,12 @@ ecommerce-java:
         reservation-ttl: PT15M         # how long reserved units stay held for an unpaid order
         expiry-check-interval: PT30S
         expiry-batch-size: 100
+    payment:
+        gateway-url: http://localhost:9090
+        webhook-secret: dev-webhook-secret   # must match fake-payment
+        connect-timeout: 1s
+        read-timeout: 3s                     # shorter than fake-payment's lost-response delay (10s)
+        reconcile-after: PT1M
+        give-up-after: PT10M
+    ordering:
+        payment-timeout: PT30M

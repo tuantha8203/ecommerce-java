@@ -1,0 +1,223 @@
+@shop = http://localhost:8080
+@pay = http://localhost:9090
+
+###############################################################
+# 0. CHUẨN BỊ: tắt mọi sự cố, tạo sản phẩm có hàng, tạo khách có địa chỉ
+###############################################################
+
+### 0.1 Gateway calm
+PUT {{pay}}/admin/chaos
+Content-Type: application/json
+
+{ "minLatencyMs": 50, "maxLatencyMs": 300, "failureRate": 0, "declineRate": 0,
+  "lostResponseRate": 0, "lostResponseDelayMs": 10000, "duplicateWebhookRate": 0 }
+
+### 0.2 Category
+# @name category
+POST {{shop}}/api/v1/admin/categories
+Content-Type: application/json
+
+{ "name": "Demo", "slug": "demo-{{$timestamp}}" }
+
+### 0.3 Product
+# @name product
+POST {{shop}}/api/v1/admin/products
+Content-Type: application/json
+
+{ "categoryId": {{category.response.body.$.id}}, "sku": "DEMO-{{$timestamp}}",
+  "name": "Demo shirt", "slug": "demo-shirt-{{$timestamp}}", "price": 150000 }
+
+### 0.4 Activate product
+POST {{shop}}/api/v1/admin/products/{{product.response.body.$.id}}/activation
+
+### 0.5 Put 100 units in stock
+PUT {{shop}}/api/v1/admin/inventory/{{product.response.body.$.id}}
+Content-Type: application/json
+
+{ "onHand": 100 }
+
+### 0.6 Customer
+# @name customer
+POST {{shop}}/api/v1/customers
+Content-Type: application/json
+
+{ "email": "demo-{{$timestamp}}@mail.com", "fullName": "Demo Buyer", "phone": "0900000001" }
+
+### 0.7 Shipping address
+POST {{shop}}/api/v1/customers/me/addresses
+X-Customer-Id: {{customer.response.body.$.id}}
+Content-Type: application/json
+
+{ "receiverName": "Demo Buyer", "phone": "0900000001", "street": "1 Le Loi",
+  "ward": "Ben Thanh Ward", "province": "Ho Chi Minh City" }
+
+
+###############################################################
+# A. BÌNH THƯỜNG → đơn PAID
+###############################################################
+
+### A.1 Two shirts in the cart
+PUT {{shop}}/api/v1/cart/items/{{product.response.body.$.id}}
+X-Customer-Id: {{customer.response.body.$.id}}
+Content-Type: application/json
+
+{ "quantity": 2 }
+
+### A.2 Place order  → expect 201, "status": "PAID"
+# @name orderA
+POST {{shop}}/api/v1/orders
+X-Customer-Id: {{customer.response.body.$.id}}
+Idempotency-Key: scenario-a
+Content-Type: application/json
+
+{ "paymentToken": "tok_visa" }
+
+### A.3 Same Idempotency-Key again → expect 200 (not 201), same order id, no second charge
+POST {{shop}}/api/v1/orders
+X-Customer-Id: {{customer.response.body.$.id}}
+Idempotency-Key: scenario-a
+Content-Type: application/json
+
+{ "paymentToken": "tok_visa" }
+
+### A.4 Stock → expect "reserved": 2
+GET {{shop}}/api/v1/admin/inventory/{{product.response.body.$.id}}
+
+### A.5 Gateway side → expect exactly 1 charge, SUCCEEDED
+GET {{pay}}/charges?reference=order-{{orderA.response.body.$.id}}
+
+
+###############################################################
+# B. THẺ BỊ TỪ CHỐI → đơn CANCELLED, hàng được nhả
+###############################################################
+
+### B.1 Cart
+PUT {{shop}}/api/v1/cart/items/{{product.response.body.$.id}}
+X-Customer-Id: {{customer.response.body.$.id}}
+Content-Type: application/json
+
+{ "quantity": 3 }
+
+### B.2 Place order with a declined test card → expect "status": "CANCELLED"
+POST {{shop}}/api/v1/orders
+X-Customer-Id: {{customer.response.body.$.id}}
+Idempotency-Key: scenario-b
+Content-Type: application/json
+
+{ "paymentToken": "tok_declined" }
+
+### B.3 Stock → "reserved" still 2 (only order A), the 3 units of B went back on sale
+GET {{shop}}/api/v1/admin/inventory/{{product.response.body.$.id}}
+
+
+###############################################################
+# C. MẤT RESPONSE → shop tự thử lại với cùng key, vẫn chỉ 1 giao dịch
+###############################################################
+
+### C.1 Gateway: charge, then stay silent for 10 seconds
+PUT {{pay}}/admin/chaos
+Content-Type: application/json
+
+{ "minLatencyMs": 50, "maxLatencyMs": 300, "failureRate": 0, "declineRate": 0,
+  "lostResponseRate": 1.0, "lostResponseDelayMs": 10000, "duplicateWebhookRate": 0 }
+
+### C.2 Cart
+PUT {{shop}}/api/v1/cart/items/{{product.response.body.$.id}}
+X-Customer-Id: {{customer.response.body.$.id}}
+Content-Type: application/json
+
+{ "quantity": 1 }
+
+### C.3 Place order → takes about 3 seconds, then "status": "PAID"
+# @name orderC
+POST {{shop}}/api/v1/orders
+X-Customer-Id: {{customer.response.body.$.id}}
+Idempotency-Key: scenario-c
+Content-Type: application/json
+
+{ "paymentToken": "tok_visa" }
+
+### C.4 Gateway side → still exactly 1 charge, despite 2 attempts
+GET {{pay}}/charges?reference=order-{{orderC.response.body.$.id}}
+
+
+###############################################################
+# D. CỔNG QUÁ CHẬM → UNKNOWN, rồi webhook đến và chốt đơn
+###############################################################
+
+### D.1 Gateway: every call takes 15 seconds (longer than our 3-second timeout)
+PUT {{pay}}/admin/chaos
+Content-Type: application/json
+
+{ "minLatencyMs": 15000, "maxLatencyMs": 15000, "failureRate": 0, "declineRate": 0,
+  "lostResponseRate": 0, "lostResponseDelayMs": 10000, "duplicateWebhookRate": 0 }
+
+### D.2 Cart
+PUT {{shop}}/api/v1/cart/items/{{product.response.body.$.id}}
+X-Customer-Id: {{customer.response.body.$.id}}
+Content-Type: application/json
+
+{ "quantity": 1 }
+
+### D.3 Place order → about 10 seconds (3 attempts x 3s), then "status": "PENDING_PAYMENT"
+# @name orderD
+POST {{shop}}/api/v1/orders
+X-Customer-Id: {{customer.response.body.$.id}}
+Idempotency-Key: scenario-d
+Content-Type: application/json
+
+{ "paymentToken": "tok_visa" }
+
+### D.4 WAIT about 10 seconds, then: → "status": "PAID" (the webhook settled it)
+GET {{shop}}/api/v1/orders/{{orderD.response.body.$.id}}
+X-Customer-Id: {{customer.response.body.$.id}}
+
+
+###############################################################
+# E. WEBHOOK GỬI TRÙNG → chỉ xử lý một lần
+###############################################################
+
+### E.1 Gateway: send every webhook twice
+PUT {{pay}}/admin/chaos
+Content-Type: application/json
+
+{ "minLatencyMs": 50, "maxLatencyMs": 300, "failureRate": 0, "declineRate": 0,
+  "lostResponseRate": 0, "lostResponseDelayMs": 10000, "duplicateWebhookRate": 1.0 }
+
+### E.2 Cart
+PUT {{shop}}/api/v1/cart/items/{{product.response.body.$.id}}
+X-Customer-Id: {{customer.response.body.$.id}}
+Content-Type: application/json
+
+{ "quantity": 1 }
+
+### E.3 Place order → "status": "PAID"; one second later the shop log shows "Duplicate webhook ... ignored"
+POST {{shop}}/api/v1/orders
+X-Customer-Id: {{customer.response.body.$.id}}
+Idempotency-Key: scenario-e
+Content-Type: application/json
+
+{ "paymentToken": "tok_visa" }
+
+
+###############################################################
+# F. GIAO HÀNG đơn A → hàng thật sự rời kho
+###############################################################
+
+### F.1 Ship order A → "status": "SHIPPED"
+POST {{shop}}/api/v1/admin/orders/{{orderA.response.body.$.id}}/shipment
+
+### F.2 Stock → "onHand" decreased by 2, and those 2 left "reserved"
+GET {{shop}}/api/v1/admin/inventory/{{product.response.body.$.id}}
+
+
+###############################################################
+# Z. Back to calm
+###############################################################
+
+### Z.1
+PUT {{pay}}/admin/chaos
+Content-Type: application/json
+
+{ "minLatencyMs": 50, "maxLatencyMs": 300, "failureRate": 0, "declineRate": 0,
+  "lostResponseRate": 0, "lostResponseDelayMs": 10000, "duplicateWebhookRate": 0 }

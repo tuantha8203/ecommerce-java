@@ -65,11 +65,6 @@ public class Order {
         total += line.lineTotal();
     }
 
-    /** The reference other modules (inventory, payment) know this order by. */
-    public String reference() {
-        return "order-" + id;
-    }
-
     void markPaid() {
         transitionTo(OrderStatus.PAID);
     }
@@ -85,6 +80,18 @@ public class Order {
     void cancel(String reason) {
         transitionTo(OrderStatus.CANCELLED);
         this.cancelReason = reason;
+    }
+
+    public static String referenceOf(long orderId) {
+        return "order-" + orderId;
+    }
+
+    static long idFromReference(String reference) {
+        return Long.parseLong(reference.substring("order-".length()));
+    }
+
+    public String reference() {
+        return referenceOf(id);
     }
 
     private void transitionTo(OrderStatus next) {

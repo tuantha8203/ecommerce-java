@@ -58,9 +58,20 @@ public class InventoryService implements InventoryApi {
 
     @Override
     @Transactional
+    public boolean confirm(String orderRef) {
+        List<StockReservation> held = reservations.lockByOrderRef(orderRef);
+        if (held.isEmpty() || held.stream().anyMatch(reservation -> !reservation.isHeld())) {
+            return false; // expired (released) before the payment arrived
+        }
+        held.forEach(StockReservation::confirm);
+        return true;
+    }
+
+    @Override
+    @Transactional
     public void commit(String orderRef) {
-        reservations.findByOrderRef(orderRef).stream()
-                .filter(StockReservation::isActive)
+        reservations.lockByOrderRef(orderRef).stream()
+                .filter(StockReservation::isHeld)
                 .forEach(reservation -> {
                     stockItems.commit(reservation.getProductId(), reservation.getQuantity());
                     reservation.commit();
@@ -70,8 +81,8 @@ public class InventoryService implements InventoryApi {
     @Override
     @Transactional
     public void release(String orderRef) {
-        reservations.findByOrderRef(orderRef).stream()
-                .filter(StockReservation::isActive) // already released or committed: nothing to do
+        reservations.lockByOrderRef(orderRef).stream()
+                .filter(StockReservation::isHeld) // ACTIVE or CONFIRMED: a paid order can be cancelled too
                 .forEach(this::releaseOne);
     }
 

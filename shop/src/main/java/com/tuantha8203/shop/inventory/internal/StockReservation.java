@@ -61,4 +61,13 @@ public class StockReservation {
     void commit() {
         this.status = ReservationStatus.COMMITTED;
     }
+
+    /** Units are still set aside for the order. */
+    boolean isHeld() {
+        return status == ReservationStatus.ACTIVE || status == ReservationStatus.CONFIRMED;
+    }
+
+    void confirm() {
+        this.status = ReservationStatus.CONFIRMED;
+    }
 }
