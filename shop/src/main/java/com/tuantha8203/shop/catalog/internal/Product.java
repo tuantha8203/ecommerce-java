@@ -1,5 +1,6 @@
 package com.tuantha8203.shop.catalog.internal;
 
+import com.tuantha8203.shop.catalog.ProductStatus;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -90,5 +91,12 @@ public class Product {
         if (price < 0) {
             throw new IllegalArgumentException("Giá không được âm");
         }
+    }
+
+    public void updateDetails(String name, String description, long price) {
+        requireNonNegative(price);
+        this.name = name;
+        this.description = description;
+        this.price = price;
     }
 }
