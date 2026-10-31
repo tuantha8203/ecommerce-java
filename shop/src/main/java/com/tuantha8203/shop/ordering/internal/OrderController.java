@@ -1,12 +1,14 @@
 package com.tuantha8203.shop.ordering.internal;
 
 import com.tuantha8203.shop.customer.CurrentCustomerId;
+import com.tuantha8203.shop.shared.RateLimiter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,10 +23,20 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/v1/orders")
-@RequiredArgsConstructor
 class OrderController {
 
     private final OrderService orders;
+    private final RateLimiter rateLimiter;
+    private final int ordersPerMinute;
+
+    OrderController(
+            OrderService orders,
+            RateLimiter rateLimiter,
+            @Value("${ecommerce-java.ordering.max-orders-per-minute:10}") int ordersPerMinute) {
+        this.orders = orders;
+        this.rateLimiter = rateLimiter;
+        this.ordersPerMinute = ordersPerMinute;
+    }
 
     @PostMapping
     ResponseEntity<OrderView> place(
@@ -32,6 +44,9 @@ class OrderController {
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 100) String idempotencyKey,
             @Valid @RequestBody(required = false) PlaceOrderRequest request,
             UriComponentsBuilder uriBuilder) {
+        // first thing: a spammer is turned away before any database or payment work happens
+        rateLimiter.check("orders", String.valueOf(customerId), ordersPerMinute, Duration.ofMinutes(1));
+
         String paymentToken = request == null ? null : request.paymentToken();
         OrderService.PlacementResult result = orders.placeOrder(customerId, idempotencyKey, paymentToken);
         URI location = uriBuilder

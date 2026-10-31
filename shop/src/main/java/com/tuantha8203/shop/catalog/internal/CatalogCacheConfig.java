@@ -3,7 +3,10 @@ package com.tuantha8203.shop.catalog.internal;
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.LoggingCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -12,9 +15,15 @@ import org.springframework.data.redis.serializer.RedisSerializationContext.Seria
 
 @Configuration
 @EnableCaching
-class CatalogCacheConfig {
+class CatalogCacheConfig implements CachingConfigurer {
 
     static final String PRODUCT_PAGES = "productPages";
+
+    /** Redis unavailable: log it and run the method (read the database) instead of failing the request. */
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new LoggingCacheErrorHandler();
+    }
 
     @Bean
     RedisCacheManagerBuilderCustomizer catalogCaches() {

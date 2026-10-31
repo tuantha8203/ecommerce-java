@@ -21,15 +21,28 @@ spring:
         type: redis
         redis:
             enable-statistics: true   # hit/miss counters, visible in /actuator/metrics
+    mail:
+        host: localhost
+        port: 1025
+    data:
+        redis:
+            timeout: 500ms           # a dead Redis costs half a second, not a minute
+            connect-timeout: 500ms
 
 management:
     endpoint:
         health:
             show-details: always               # dev: xem được trạng thái DB trong /actuator/health
+            group:
+                readiness:
+                    include: readinessState,db   # only what the app cannot work without
     endpoints:
         web:
             exposure:
                 include: health,metrics
+    health:
+        mail:
+            enabled: false
 
 ecommerce-java:
     inventory:
@@ -45,5 +58,8 @@ ecommerce-java:
         give-up-after: PT10M
     ordering:
         payment-timeout: PT30M
+        max-orders-per-minute: 10   # per customer; raise it for load tests
     reporting:
         zone: Asia/Ho_Chi_Minh   # the business day starts at midnight in this time zone
+    notification:
+        from: no-reply@ecommerce.local

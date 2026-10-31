@@ -1,0 +1,88 @@
+@shop = http://localhost:8080
+@keycloak = http://localhost:8180/realms/ecommerce/protocol/openid-connect/token
+
+### 1. Admin token
+# @name shopAdmin
+POST {{keycloak}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ecommerce-cli&username=shop-admin&password=shop-admin
+
+### 2. Alice token
+# @name alice
+POST {{keycloak}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ecommerce-cli&username=alice&password=alice
+
+### 3. Category
+# @name category
+POST {{shop}}/api/v1/admin/categories
+Authorization: Bearer {{shopAdmin.response.body.access_token}}
+Content-Type: application/json
+
+{ "name": "Mail test", "slug": "mail-test-{{$timestamp}}" }
+
+### 4. Product
+# @name product
+POST {{shop}}/api/v1/admin/products
+Authorization: Bearer {{shopAdmin.response.body.access_token}}
+Content-Type: application/json
+
+{ "categoryId": {{category.response.body.$.id}}, "sku": "MAIL-{{$timestamp}}",
+  "name": "Áo thun gửi mail", "slug": "mail-shirt-{{$timestamp}}", "price": 150000 }
+
+### 5. Activate
+POST {{shop}}/api/v1/admin/products/{{product.response.body.$.id}}/activation
+Authorization: Bearer {{shopAdmin.response.body.access_token}}
+
+### 6. Stock
+PUT {{shop}}/api/v1/admin/inventory/{{product.response.body.$.id}}
+Authorization: Bearer {{shopAdmin.response.body.access_token}}
+Content-Type: application/json
+
+{ "onHand": 100 }
+
+### 7. Alice: shipping address
+POST {{shop}}/api/v1/customers/me/addresses
+Authorization: Bearer {{alice.response.body.access_token}}
+Content-Type: application/json
+
+{ "receiverName": "Alice Nguyen", "phone": "0900000001", "street": "1 Le Loi",
+  "ward": "Ben Thanh Ward", "province": "Ho Chi Minh City" }
+
+### 8. Alice: 2 shirts in the cart
+PUT {{shop}}/api/v1/cart/items/{{product.response.body.$.id}}
+Authorization: Bearer {{alice.response.body.access_token}}
+Content-Type: application/json
+
+{ "quantity": 2 }
+
+### 9. Alice: place order → PAID, an email is sent
+POST {{shop}}/api/v1/orders
+Authorization: Bearer {{alice.response.body.access_token}}
+Idempotency-Key: mail-{{$timestamp}}
+Content-Type: application/json
+
+{ "paymentToken": "tok_visa" }
+
+### 10. Mailpit: list received emails
+GET http://localhost:8025/api/v1/messages
+
+### 11. Alice: cart again
+PUT {{shop}}/api/v1/cart/items/{{product.response.body.$.id}}
+Authorization: Bearer {{alice.response.body.access_token}}
+Content-Type: application/json
+
+{ "quantity": 1 }
+
+### 12. Declined card → CANCELLED, no email
+POST {{shop}}/api/v1/orders
+Authorization: Bearer {{alice.response.body.access_token}}
+Idempotency-Key: mail-declined-{{$timestamp}}
+Content-Type: application/json
+
+{ "paymentToken": "tok_declined" }
+
+### 13. Mailpit again: the number of emails must not have changed
+GET http://localhost:8025/api/v1/messages
