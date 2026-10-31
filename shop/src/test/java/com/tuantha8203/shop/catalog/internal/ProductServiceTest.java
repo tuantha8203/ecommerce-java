@@ -17,6 +17,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +32,12 @@ class ProductServiceTest {
 
     @InjectMocks
     ProductService service;
+
+    @Mock
+    CacheManager cacheManager;
+
+    @Mock
+    Cache productPages;
 
     private final Category shirts = new Category("Shirts", "shirts", null);
 
@@ -78,11 +86,13 @@ class ProductServiceTest {
     void updateChangesDetailsWhenVersionMatches() {
         Product product = new Product(shirts, "SKU-1", "T-shirt", "t-shirt", null, 150_000);
         when(products.findById(10L)).thenReturn(Optional.of(product));
+        when(cacheManager.getCache(CatalogCacheConfig.PRODUCT_PAGES)).thenReturn(productPages);
 
         ProductDetails updated = service.update(10L, 0L, new UpdateProductRequest("Polo shirt", "Cotton", 199_000));
 
         assertThat(updated.name()).isEqualTo("Polo shirt");
         assertThat(updated.price()).isEqualTo(199_000);
+        verify(productPages).evict("t-shirt"); // the public page must not keep showing the old price
     }
 
     @Test
