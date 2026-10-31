@@ -1,0 +1,16 @@
+@shop = http://localhost:8080
+
+### Seed products are named "Product N"
+GET {{shop}}/api/v1/products/search?q=product 77
+
+### Prefix: "prod 77" still matches "Product 77", "Product 770"...
+GET {{shop}}/api/v1/products/search?q=product 7&size=5
+
+### Page 2
+GET {{shop}}/api/v1/products/search?q=product&page=1&size=5
+
+### Symbols only → empty result, not a 500
+GET {{shop}}/api/v1/products/search?q=!!!
+
+### Page too deep → 400
+GET {{shop}}/api/v1/products/search?q=product&page=50

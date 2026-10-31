@@ -7,8 +7,12 @@ import com.tuantha8203.shop.shared.ConstraintViolations;
 import com.tuantha8203.shop.shared.CursorPage;
 import com.tuantha8203.shop.shared.PageResponse;
 import com.tuantha8203.shop.shared.PreconditionFailedException;
+import java.text.Normalizer;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -30,6 +34,8 @@ public class ProductService implements CatalogApi {
     private final CategoryRepository categories;
     private final ProductListingQueries listingQueries;
     private final CacheManager cacheManager;
+
+    private static final int MAX_SEARCH_TERMS = 8;
 
     @Transactional
     public ProductDetails create(CreateProductRequest request) {
@@ -107,6 +113,16 @@ public class ProductService implements CatalogApi {
         return PageResponse.from(result.map(ProductService::toSummary));
     }
 
+    public SearchPage search(String text, int page, int size) {
+        String prefixQuery = toPrefixQuery(text);
+        if (prefixQuery.isEmpty()) {
+            return new SearchPage(List.of(), page, size, false);
+        }
+        List<ProductCard> rows = listingQueries.search(toExactQuery(text), prefixQuery, size + 1, page * size);
+        boolean hasMore = rows.size() > size;
+        return new SearchPage(hasMore ? rows.subList(0, size) : rows, page, size, hasMore);
+    }
+
     /** With transactionAware(), the eviction actually happens right after the transaction commits. */
     private void evictProductPage(String slug) {
         Cache cache = cacheManager.getCache(CatalogCacheConfig.PRODUCT_PAGES);
@@ -146,5 +162,25 @@ public class ProductService implements CatalogApi {
                 product.getSlug(),
                 product.getPrice(),
                 product.getStatus());
+    }
+
+    /** "Áo  thun!!" → ["áo", "thun"]: lowercase, composed (NFC), only letters and digits, at most 8 words. */
+    static List<String> searchTerms(String text) {
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFC).toLowerCase(Locale.ROOT);
+        return Arrays.stream(normalized.split("\\s+"))
+                .map(word -> word.replaceAll("[^\\p{L}\\p{N}]", ""))
+                .filter(word -> !word.isEmpty())
+                .limit(MAX_SEARCH_TERMS)
+                .toList();
+    }
+
+    /** "áo:* & thun:*": used to FIND products, so "ao th" already matches "áo thun". */
+    static String toPrefixQuery(String text) {
+        return searchTerms(text).stream().map(word -> word + ":*").collect(Collectors.joining(" & "));
+    }
+
+    /** "áo & thun": used to RANK, so a product containing exactly "77" beats one containing "77999". */
+    static String toExactQuery(String text) {
+        return String.join(" & ", searchTerms(text));
     }
 }

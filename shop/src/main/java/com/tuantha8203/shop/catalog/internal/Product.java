@@ -2,6 +2,7 @@ package com.tuantha8203.shop.catalog.internal;
 
 import com.tuantha8203.shop.catalog.ProductStatus;
 import jakarta.persistence.*;
+import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,11 +64,11 @@ public class Product {
         requireNonNegative(price);
         this.category = category;
         this.sku = sku;
-        this.name = name;
         this.slug = slug;
-        this.description = description;
         this.price = price;
         this.status = ProductStatus.DRAFT;
+        this.name = nfc(name);
+        this.description = nfc(description);
     }
 
     public void changePrice(long newPrice) {
@@ -98,5 +99,10 @@ public class Product {
         this.name = name;
         this.description = description;
         this.price = price;
+    }
+
+    /** Vietnamese text may arrive decomposed (NFD, common on macOS); search only understands composed (NFC). */
+    private static String nfc(String text) {
+        return text == null ? null : Normalizer.normalize(text, Normalizer.Form.NFC);
     }
 }
