@@ -2,6 +2,7 @@ package com.tuantha8203.shop.ordering.internal;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/admin/orders")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 class AdminOrderController {
 
     private final OrderService orders;

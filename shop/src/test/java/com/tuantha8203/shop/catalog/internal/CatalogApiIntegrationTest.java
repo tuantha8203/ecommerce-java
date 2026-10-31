@@ -1,5 +1,8 @@
 package com.tuantha8203.shop.catalog.internal;
 
+import static com.tuantha8203.shop.TestAuth.admin;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -34,6 +37,7 @@ class CatalogApiIntegrationTest {
         String slug = "t-shirt-" + suffix;
 
         String categoryJson = mvc.perform(post("/api/v1/admin/categories")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name": "Shirts", "slug": "shirts-%s"}
@@ -45,6 +49,7 @@ class CatalogApiIntegrationTest {
         int categoryId = JsonPath.read(categoryJson, "$.id");
 
         String location = mvc.perform(post("/api/v1/admin/products")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"categoryId": %d, "sku": "SKU-%s", "name": "T-shirt", "slug": "%s", "price": 150000}
@@ -53,12 +58,13 @@ class CatalogApiIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getHeader(HttpHeaders.LOCATION);
+        // productPath is /api/v1/admin/products/{id}: an admin path, so every call below needs the admin token
         String productPath = location.substring(location.indexOf("/api/"));
 
-        // a draft is invisible on the public page
+        // a draft is invisible on the public page (no token: anonymous visitor)
         mvc.perform(get("/api/v1/products/" + slug)).andExpect(status().isNotFound());
 
-        mvc.perform(post(productPath + "/activation")).andExpect(status().isNoContent());
+        mvc.perform(post(productPath + "/activation").with(admin())).andExpect(status().isNoContent());
 
         mvc.perform(get("/api/v1/products/" + slug))
                 .andExpect(status().isOk())
@@ -66,6 +72,7 @@ class CatalogApiIntegrationTest {
 
         // first update with the current version succeeds and bumps the version
         mvc.perform(put(productPath)
+                        .with(admin())
                         .header(HttpHeaders.IF_MATCH, "\"1\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -76,6 +83,7 @@ class CatalogApiIntegrationTest {
 
         // a second update still holding the old version is rejected
         mvc.perform(put(productPath)
+                        .with(admin())
                         .header(HttpHeaders.IF_MATCH, "\"1\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -91,26 +99,29 @@ class CatalogApiIntegrationTest {
                 """.formatted(UUID.randomUUID().toString().substring(0, 8));
 
         mvc.perform(post("/api/v1/admin/categories")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated());
 
         mvc.perform(post("/api/v1/admin/categories")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict())
-                .andExpect(
-                        jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Category slug already exists")));
+                .andExpect(jsonPath("$.detail").value(startsWith("Category slug already exists")));
     }
 
     @Test
     void duplicateProductSlugIsCaughtByTheDatabaseAndReturns409() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         String categoryJson = mvc.perform(post("/api/v1/admin/categories")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name": "Bags", "slug": "bags-%s"}
                                 """.formatted(suffix)))
+                .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -120,28 +131,30 @@ class CatalogApiIntegrationTest {
                 {"categoryId": %d, "sku": "%s", "name": "Bag", "slug": "bag-%s", "price": 1}
                 """;
         mvc.perform(post("/api/v1/admin/products")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(product.formatted(categoryId, "BAG-A-" + suffix.toUpperCase(), suffix)))
                 .andExpect(status().isCreated());
 
         // different SKU, same slug: no early check exists for slugs, only the unique constraint
         mvc.perform(post("/api/v1/admin/products")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(product.formatted(categoryId, "BAG-B-" + suffix.toUpperCase(), suffix)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Product slug already exists")));
+                .andExpect(jsonPath("$.detail").value(startsWith("Product slug already exists")));
     }
 
     @Test
     void validationErrorListsEveryInvalidField() throws Exception {
         mvc.perform(post("/api/v1/admin/products")
+                        .with(admin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"categoryId": 1, "sku": "lowercase", "name": "", "slug": "OK", "price": -1}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation failed"))
-                .andExpect(jsonPath("$.errors[*].field")
-                        .value(org.hamcrest.Matchers.containsInAnyOrder("sku", "name", "slug", "price")));
+                .andExpect(jsonPath("$.errors[*].field").value(containsInAnyOrder("sku", "name", "slug", "price")));
     }
 }

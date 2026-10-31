@@ -37,6 +37,9 @@ public class Customer {
     @OrderBy("id")
     private List<Address> addresses = new ArrayList<>();
 
+    @Column(length = 64)
+    private String keycloakId;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -98,5 +101,16 @@ public class Customer {
                 .filter(address -> Long.valueOf(addressId).equals(address.getId()))
                 .findFirst()
                 .orElseThrow(() -> new AddressNotFoundException(addressId));
+    }
+
+    /** A profile created from a logged-in account the first time it calls the API. */
+    static Customer fromIdentity(String keycloakId, String email, String fullName) {
+        Customer customer = new Customer(email, fullName, null);
+        customer.keycloakId = keycloakId;
+        return customer;
+    }
+
+    void linkIdentity(String keycloakId) {
+        this.keycloakId = keycloakId;
     }
 }

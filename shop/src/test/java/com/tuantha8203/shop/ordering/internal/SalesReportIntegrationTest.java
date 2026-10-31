@@ -1,5 +1,8 @@
 package com.tuantha8203.shop.ordering.internal;
 
+import static com.tuantha8203.shop.TestAuth.admin;
+import static com.tuantha8203.shop.TestAuth.customer;
+import static com.tuantha8203.shop.TestAuth.newSubject;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,6 +63,7 @@ class SalesReportIntegrationTest {
         order("PAID", "2020-01-01T17:00:00Z", 200_000);
 
         mvc.perform(get("/api/v1/admin/reports/daily-revenue")
+                        .with(admin())
                         .param("from", "2020-01-01")
                         .param("to", "2020-01-02"))
                 .andExpect(status().isOk())
@@ -77,8 +81,10 @@ class SalesReportIntegrationTest {
         order("PENDING_PAYMENT", "2020-02-10T06:00:00Z", 999_000);
 
         mvc.perform(get("/api/v1/admin/reports/daily-revenue")
+                        .with(admin())
                         .param("from", "2020-02-09")
                         .param("to", "2020-02-11"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.days.length()").value(3))
                 .andExpect(jsonPath("$.days[0].revenue").value(0)) // Feb 9: no sales, still listed
                 .andExpect(jsonPath("$.days[1].orders").value(2))
@@ -97,8 +103,10 @@ class SalesReportIntegrationTest {
         line(cancelled, 2, "Socks", 20_000, 100);
 
         mvc.perform(get("/api/v1/admin/reports/top-products")
+                        .with(admin())
                         .param("from", "2020-03-01")
                         .param("to", "2020-03-31"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].productId").value(1))
                 .andExpect(jsonPath("$[0].productName").value("New shirt name"))
                 .andExpect(jsonPath("$[0].unitsSold").value(5))
@@ -109,12 +117,23 @@ class SalesReportIntegrationTest {
     @Test
     void invalidRangesAreRejected() throws Exception {
         mvc.perform(get("/api/v1/admin/reports/daily-revenue")
+                        .with(admin())
                         .param("from", "2020-05-10")
                         .param("to", "2020-05-01"))
                 .andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/admin/reports/daily-revenue")
+                        .with(admin())
                         .param("from", "2019-01-01")
                         .param("to", "2020-12-31"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void customersCannotSeeTheShopsRevenue() throws Exception {
+        mvc.perform(get("/api/v1/admin/reports/daily-revenue")
+                        .with(customer(newSubject()))
+                        .param("from", "2020-01-01")
+                        .param("to", "2020-01-02"))
+                .andExpect(status().isForbidden());
     }
 }

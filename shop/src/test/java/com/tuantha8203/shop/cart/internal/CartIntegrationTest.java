@@ -1,5 +1,7 @@
 package com.tuantha8203.shop.cart.internal;
 
+import static com.tuantha8203.shop.TestAuth.customer;
+import static com.tuantha8203.shop.TestAuth.newSubject;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -13,9 +15,7 @@ import com.tuantha8203.shop.catalog.internal.CreateProductRequest;
 import com.tuantha8203.shop.catalog.internal.ProductService;
 import com.tuantha8203.shop.catalog.internal.UpdateProductRequest;
 import com.tuantha8203.shop.inventory.internal.InventoryService;
-import com.tuantha8203.shop.shared.CallerHeaders;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,8 +42,8 @@ class CartIntegrationTest {
     @Autowired
     InventoryService inventoryService;
 
-    // JUnit creates a new instance per test, so every test gets its own customer and its own cart
-    private final long customerId = ThreadLocalRandom.current().nextLong(1_000_000, 1_000_000_000);
+    // JUnit creates a new instance per test, so every test gets its own account and its own cart
+    private final String subject = newSubject();
 
     private long product(long price, int stock, boolean active) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
@@ -68,13 +68,13 @@ class CartIntegrationTest {
 
     private ResultActions setQuantity(long productId, int quantity) throws Exception {
         return mvc.perform(put("/api/v1/cart/items/" + productId)
-                .header(CallerHeaders.CUSTOMER_ID, customerId)
+                .with(customer(subject))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"quantity\": %d}".formatted(quantity)));
     }
 
     private ResultActions getCart() throws Exception {
-        return mvc.perform(get("/api/v1/cart").header(CallerHeaders.CUSTOMER_ID, customerId));
+        return mvc.perform(get("/api/v1/cart").with(customer(subject)));
     }
 
     @Test
@@ -107,7 +107,7 @@ class CartIntegrationTest {
         setQuantity(shirt, 1);
 
         for (int i = 0; i < 2; i++) {
-            mvc.perform(delete("/api/v1/cart/items/" + shirt).header(CallerHeaders.CUSTOMER_ID, customerId))
+            mvc.perform(delete("/api/v1/cart/items/" + shirt).with(customer(subject)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.lines.length()").value(0));
         }
@@ -160,7 +160,13 @@ class CartIntegrationTest {
         long shirt = product(100_000, 10, true);
         setQuantity(shirt, 1);
 
-        mvc.perform(get("/api/v1/cart").header(CallerHeaders.CUSTOMER_ID, customerId + 1))
+        // a different account sees its own, empty cart
+        mvc.perform(get("/api/v1/cart").with(customer(newSubject())))
                 .andExpect(jsonPath("$.lines.length()").value(0));
+    }
+
+    @Test
+    void theCartNeedsALoggedInCustomer() throws Exception {
+        mvc.perform(get("/api/v1/cart")).andExpect(status().isUnauthorized());
     }
 }

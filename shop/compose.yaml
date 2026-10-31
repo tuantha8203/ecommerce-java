@@ -14,6 +14,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4   # check quay.io for the newest 26.x tag
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin   # admin console of Keycloak itself, local only
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"                        # 8080 is already taken by the shop
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
 
 volumes:
   shop-pgdata:

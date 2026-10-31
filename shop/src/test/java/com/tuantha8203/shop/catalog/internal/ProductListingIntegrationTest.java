@@ -1,6 +1,13 @@
 package com.tuantha8203.shop.catalog.internal;
 
+import static com.tuantha8203.shop.TestAuth.admin;
+import static com.tuantha8203.shop.TestAuth.customer;
+import static com.tuantha8203.shop.TestAuth.newSubject;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -59,6 +66,8 @@ class ProductListingIntegrationTest {
                 categoryId, "LST-" + suffix.toUpperCase() + "-D2", "Draft 2", "draft-" + suffix + "-2", null, 1));
     }
 
+    // --- public listing: no token, an anonymous visitor must be able to browse ---
+
     @Test
     void cursorWalksEveryActiveProductExactlyOnceNewestFirst() throws Exception {
         List<String> seen = new ArrayList<>();
@@ -97,13 +106,23 @@ class ProductListingIntegrationTest {
         mvc.perform(get("/api/v1/products").param("limit", "500")).andExpect(status().isBadRequest());
     }
 
+    // --- admin listing: drafts included, so admins only ---
+
     @Test
     void adminListFiltersByStatusAndReportsTotals() throws Exception {
-        mvc.perform(get("/api/v1/admin/products").param("status", "DRAFT").param("size", "5"))
+        mvc.perform(get("/api/v1/admin/products")
+                        .with(admin())
+                        .param("status", "DRAFT")
+                        .param("size", "5"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items.length()").value(org.hamcrest.Matchers.lessThanOrEqualTo(5)))
-                .andExpect(jsonPath("$.items[*].status")
-                        .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("DRAFT"))))
-                .andExpect(jsonPath("$.totalElements").value(org.hamcrest.Matchers.greaterThanOrEqualTo(2)));
+                .andExpect(jsonPath("$.items.length()").value(lessThanOrEqualTo(5)))
+                .andExpect(jsonPath("$.items[*].status").value(everyItem(is("DRAFT"))))
+                .andExpect(jsonPath("$.totalElements").value(greaterThanOrEqualTo(2)));
+    }
+
+    @Test
+    void customersCannotSeeDraftsThroughTheAdminList() throws Exception {
+        mvc.perform(get("/api/v1/admin/products").with(customer(newSubject())).param("status", "DRAFT"))
+                .andExpect(status().isForbidden());
     }
 }

@@ -1,5 +1,8 @@
 package com.tuantha8203.shop.payment.internal;
 
+import static com.tuantha8203.shop.TestAuth.customer;
+import static com.tuantha8203.shop.TestAuth.identity;
+import static com.tuantha8203.shop.TestAuth.newSubject;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -18,10 +21,9 @@ import com.tuantha8203.shop.catalog.internal.CreateCategoryRequest;
 import com.tuantha8203.shop.catalog.internal.CreateProductRequest;
 import com.tuantha8203.shop.catalog.internal.ProductService;
 import com.tuantha8203.shop.customer.internal.AddAddressRequest;
+import com.tuantha8203.shop.customer.internal.CustomerIdentities;
 import com.tuantha8203.shop.customer.internal.CustomerService;
-import com.tuantha8203.shop.customer.internal.RegisterCustomerRequest;
 import com.tuantha8203.shop.inventory.internal.InventoryService;
-import com.tuantha8203.shop.shared.CallerHeaders;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
@@ -58,6 +60,9 @@ class PaymentFlowIntegrationTest {
     WebhookSignatures signatures;
 
     @Autowired
+    CustomerIdentities identities;
+
+    @Autowired
     CustomerService customerService;
 
     @Autowired
@@ -75,16 +80,16 @@ class PaymentFlowIntegrationTest {
     @Autowired
     Clock clock;
 
-    private long customerId;
+    private String subject; // who the token says the buyer is, for HTTP calls
+    private long customerId; // the buyer's profile, for service calls
     private long productId;
 
     // --- helpers ---
 
     private void buyerWithTwoShirtsInCart() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        customerId = customerService
-                .register(new RegisterCustomerRequest("pay-" + suffix + "@mail.com", "Payer", null))
-                .id();
+        subject = newSubject();
+        customerId = identities.resolve(identity(subject));
         customerService.addAddress(
                 customerId, new AddAddressRequest("Payer", "0900000001", "1 Le Loi", "Ben Thanh Ward", "HCMC"));
         long categoryId = categoryService
@@ -101,7 +106,7 @@ class PaymentFlowIntegrationTest {
 
     private int placeOrder(String expectedStatus) throws Exception {
         String json = mvc.perform(post("/api/v1/orders")
-                        .header(CallerHeaders.CUSTOMER_ID, customerId)
+                        .with(customer(subject))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"paymentToken\": \"tok_visa\"}"))
@@ -127,6 +132,7 @@ class PaymentFlowIntegrationTest {
         when(gateway.charge(any(), any(), anyLong(), any())).thenThrow(new ResourceAccessException("Read timed out"));
     }
 
+    /** No token on purpose: the gateway has no Keycloak account, the HMAC signature is its only proof. */
     private ResultActions sendWebhook(
             String eventId, String orderRef, String chargeId, String status, boolean validSignature) throws Exception {
         String body = """
@@ -138,7 +144,7 @@ class PaymentFlowIntegrationTest {
     }
 
     private void expectOrderStatus(int orderId, String expected) throws Exception {
-        mvc.perform(get("/api/v1/orders/" + orderId).header(CallerHeaders.CUSTOMER_ID, customerId))
+        mvc.perform(get("/api/v1/orders/" + orderId).with(customer(subject)))
                 .andExpect(jsonPath("$.status").value(expected));
     }
 
@@ -231,7 +237,7 @@ class PaymentFlowIntegrationTest {
         int orderId = placeOrder("PENDING_PAYMENT");
         String orderRef = "order-" + orderId;
 
-        mvc.perform(post("/api/v1/orders/" + orderId + "/cancellation").header(CallerHeaders.CUSTOMER_ID, customerId))
+        mvc.perform(post("/api/v1/orders/" + orderId + "/cancellation").with(customer(subject)))
                 .andExpect(status().isNoContent());
 
         // the lost charge turns out to have succeeded after all
