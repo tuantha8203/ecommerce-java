@@ -115,4 +115,13 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     ProblemDetail handleAccessDenied(AccessDeniedException ex) {
         return problem(HttpStatus.FORBIDDEN, "Forbidden", "You are not allowed to do this.");
     }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException ex) {
+        ProblemDetail problem = problem(HttpStatus.TOO_MANY_REQUESTS, "Too many requests", ex.getMessage());
+        long seconds = Math.max(1, ex.retryAfter().toSeconds());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(seconds)) // tells well-behaved clients when to retry
+                .body(problem);
+    }
 }

@@ -1,6 +1,7 @@
 package com.tuantha8203.shop.customer.internal;
 
 import com.tuantha8203.shop.customer.CustomerApi;
+import com.tuantha8203.shop.customer.CustomerContact;
 import com.tuantha8203.shop.customer.ShippingAddress;
 import com.tuantha8203.shop.shared.ConstraintViolations;
 import com.tuantha8203.shop.shared.InvalidRequestException;
@@ -122,5 +123,12 @@ public class CustomerService implements CustomerApi {
         return customers
                 .saveAndFlush(Customer.fromIdentity(identity.subject(), identity.email(), identity.displayName()))
                 .getId();
+    }
+
+    @Override
+    public Optional<CustomerContact> findContact(long customerId) {
+        return customers
+                .findById(customerId)
+                .map(customer -> new CustomerContact(customer.getEmail(), customer.getFullName()));
     }
 }
