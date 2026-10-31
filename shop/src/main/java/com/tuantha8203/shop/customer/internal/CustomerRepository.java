@@ -11,4 +11,6 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     // Không dùng findByEmailIgnoreCase: Spring Data sinh ra upper(...), không dùng được index.
     @Query("select c from Customer c where lower(c.email) = lower(:email)")
     Optional<Customer> findByEmail(@Param("email") String email);
+
+    Optional<Customer> findByKeycloakId(String keycloakId);
 }

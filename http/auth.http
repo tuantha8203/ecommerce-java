@@ -1,0 +1,36 @@
+@keycloak = http://localhost:8180/realms/ecommerce/protocol/openid-connect/token
+
+### Alice (customer)
+# @name alice
+POST {{keycloak}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ecommerce-cli&username=alice&password=alice
+
+### Bob (customer)
+# @name bob
+POST {{keycloak}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ecommerce-cli&username=bob&password=bob
+
+### Shop admin
+# @name shopAdmin
+POST {{keycloak}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ecommerce-cli&username=shop-admin&password=shop-admin
+
+### Alice's profile (created automatically on this first call)
+GET http://localhost:8080/api/v1/customers/me
+Authorization: Bearer {{alice.response.body.access_token}}
+
+### Alice tries the admin API → 403
+POST http://localhost:8080/api/v1/admin/categories
+Authorization: Bearer {{alice.response.body.access_token}}
+Content-Type: application/json
+
+{ "name": "Hack", "slug": "hack" }
+
+### No token → 401
+GET http://localhost:8080/api/v1/cart

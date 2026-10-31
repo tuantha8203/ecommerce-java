@@ -11,6 +11,12 @@ spring:
     mvc:
         problemdetails:
             enabled: true
+    security:
+        oauth2:
+            resourceserver:
+                jwt:
+                    issuer-uri: http://localhost:8180/realms/ecommerce   # tokens must come from this realm
+                    audiences: ecommerce-api                             # and must be meant for this API
 
 management:
     endpoint:

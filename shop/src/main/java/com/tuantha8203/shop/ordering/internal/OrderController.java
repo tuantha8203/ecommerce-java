@@ -1,6 +1,6 @@
 package com.tuantha8203.shop.ordering.internal;
 
-import com.tuantha8203.shop.shared.CallerHeaders;
+import com.tuantha8203.shop.customer.CurrentCustomerId;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -28,7 +28,7 @@ class OrderController {
 
     @PostMapping
     ResponseEntity<OrderView> place(
-            @RequestHeader(CallerHeaders.CUSTOMER_ID) long customerId,
+            @CurrentCustomerId long customerId,
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 100) String idempotencyKey,
             @Valid @RequestBody(required = false) PlaceOrderRequest request,
             UriComponentsBuilder uriBuilder) {
@@ -45,18 +45,18 @@ class OrderController {
     }
 
     @GetMapping
-    List<OrderSummary> list(@RequestHeader(CallerHeaders.CUSTOMER_ID) long customerId) {
+    List<OrderSummary> list(@CurrentCustomerId long customerId) {
         return orders.listOrders(customerId);
     }
 
     @GetMapping("/{orderId}")
-    OrderView get(@RequestHeader(CallerHeaders.CUSTOMER_ID) long customerId, @PathVariable long orderId) {
+    OrderView get(@CurrentCustomerId long customerId, @PathVariable long orderId) {
         return orders.getOrder(customerId, orderId);
     }
 
     @PostMapping("/{orderId}/cancellation")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void cancel(@RequestHeader(CallerHeaders.CUSTOMER_ID) long customerId, @PathVariable long orderId) {
+    void cancel(@CurrentCustomerId long customerId, @PathVariable long orderId) {
         orders.cancelByCustomer(customerId, orderId);
     }
 }

@@ -3,6 +3,7 @@ package com.tuantha8203.shop.customer.internal;
 import com.tuantha8203.shop.customer.CustomerApi;
 import com.tuantha8203.shop.customer.ShippingAddress;
 import com.tuantha8203.shop.shared.ConstraintViolations;
+import com.tuantha8203.shop.shared.InvalidRequestException;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -99,5 +100,27 @@ public class CustomerService implements CustomerApi {
 
     private Customer load(long customerId) {
         return customers.findById(customerId).orElseThrow(() -> new CustomerNotFoundException(customerId));
+    }
+
+    /** Creates the profile for a new account, or attaches the account to an existing profile with its email. */
+    @Transactional
+    public long createOrLink(CustomerIdentity identity) {
+        if (identity.email() == null || identity.email().isBlank()) {
+            throw new InvalidRequestException("The account has no email address");
+        }
+        Optional<Customer> sameEmail = customers.findByEmail(identity.email());
+        if (sameEmail.isPresent()) {
+            Customer existing = sameEmail.get();
+            // Never attach an account to a profile on the strength of an UNVERIFIED email:
+            // anyone could register "victim@mail.com" in Keycloak and inherit the victim's orders
+            if (existing.getKeycloakId() != null || !identity.emailVerified()) {
+                throw new EmailAlreadyRegisteredException(identity.email());
+            }
+            existing.linkIdentity(identity.subject());
+            return existing.getId();
+        }
+        return customers
+                .saveAndFlush(Customer.fromIdentity(identity.subject(), identity.email(), identity.displayName()))
+                .getId();
     }
 }
