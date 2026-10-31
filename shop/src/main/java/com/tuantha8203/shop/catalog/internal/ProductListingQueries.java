@@ -59,4 +59,33 @@ class ProductListingQueries {
         OffsetDateTime createdAt = rs.getObject("created_at", OffsetDateTime.class);
         return new Row(card, new ProductCursor(createdAt.toInstant(), card.id()));
     }
+
+    /** Finds with the prefix query, ranks exact-word matches first. Both queries are sanitized by the caller. */
+    List<ProductCard> search(String exactQuery, String prefixQuery, int limit, int offset) {
+        return jdbc
+                .sql("""
+                        SELECT p.id, p.name, p.slug, p.price, p.created_at,
+                               c.name AS category_name, i.url AS thumbnail_url
+                        FROM catalog.products p
+                        JOIN catalog.categories c ON c.id = p.category_id
+                        LEFT JOIN catalog.product_images i ON i.product_id = p.id AND i.position = 0
+                        CROSS JOIN to_tsquery('simple', catalog.immutable_unaccent(:exact))  AS exact
+                        CROSS JOIN to_tsquery('simple', catalog.immutable_unaccent(:prefix)) AS prefix
+                        WHERE p.status = 'ACTIVE'
+                          AND p.search_vector @@ prefix
+                        ORDER BY (p.search_vector @@ exact) DESC,          -- every word matched whole: first
+                                 ts_rank(p.search_vector, prefix) DESC,
+                                 p.id DESC
+                        LIMIT :limit OFFSET :offset
+                        """)
+                .param("exact", exactQuery)
+                .param("prefix", prefixQuery)
+                .param("limit", limit)
+                .param("offset", offset)
+                .query(ProductListingQueries::mapRow)
+                .list()
+                .stream()
+                .map(Row::card)
+                .toList();
+    }
 }

@@ -3,6 +3,8 @@ package com.tuantha8203.shop.catalog.internal;
 import com.tuantha8203.shop.shared.CursorPage;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -28,6 +30,14 @@ class ProductController {
                 // public: browsers AND shared caches (CDN) may keep it for 60 seconds
                 .cacheControl(CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic())
                 .body(product);
+    }
+
+    @GetMapping("/search")
+    SearchPage search(
+            @RequestParam @NotBlank @Size(max = 100) String q,
+            @RequestParam(defaultValue = "0") @Min(0) @Max(19) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
+        return products.search(q, page, size);
     }
 
     @GetMapping

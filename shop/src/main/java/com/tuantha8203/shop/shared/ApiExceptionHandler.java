@@ -16,6 +16,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
@@ -83,6 +84,22 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 .map(error -> Map.of(
                         "field", error.getField(),
                         "message", Objects.requireNonNullElse(error.getDefaultMessage(), "is invalid")))
+                .toList();
+        problem.setProperty("errors", errors);
+        return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    /** Same field list for invalid query parameters (@Min/@Max on @RequestParam) as for invalid JSON bodies. */
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ProblemDetail problem = ex.getBody();
+        problem.setTitle("Validation failed");
+        List<Map<String, String>> errors = ex.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> Map.of(
+                                "field", result.getMethodParameter().getParameterName(),
+                                "message", Objects.requireNonNullElse(error.getDefaultMessage(), "is invalid"))))
                 .toList();
         problem.setProperty("errors", errors);
         return handleExceptionInternal(ex, problem, headers, status, request);
