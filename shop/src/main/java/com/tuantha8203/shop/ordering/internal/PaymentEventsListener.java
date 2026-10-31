@@ -1,10 +1,12 @@
 package com.tuantha8203.shop.ordering.internal;
 
 import com.tuantha8203.shop.inventory.InventoryApi;
+import com.tuantha8203.shop.ordering.OrderPaid;
 import com.tuantha8203.shop.payment.PaymentApi;
 import com.tuantha8203.shop.payment.PaymentFailed;
 import com.tuantha8203.shop.payment.PaymentSucceeded;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ class PaymentEventsListener {
     private final OrderRepository orders;
     private final InventoryApi inventory;
     private final PaymentApi payments;
+    private final ApplicationEventPublisher events; // NEW
 
     @EventListener
     @Transactional
@@ -29,6 +32,9 @@ class PaymentEventsListener {
                 case PENDING_PAYMENT -> {
                     if (inventory.confirm(order.reference())) {
                         order.markPaid();
+                        // NEW: tell other modules (notification) the order is paid.
+                        // Listeners declared AFTER_COMMIT only run once this transaction commits.
+                        events.publishEvent(new OrderPaid(order.getId(), order.getCustomerId(), order.getTotal()));
                     } else {
                         // Paid, but the reservation expired in the meantime: we cannot ship it
                         order.cancel("Stock reservation expired before the payment completed");
@@ -44,6 +50,7 @@ class PaymentEventsListener {
         });
     }
 
+    // UNCHANGED: a failed payment pays nothing, so there is nothing to confirm
     @EventListener
     @Transactional
     void on(PaymentFailed event) {

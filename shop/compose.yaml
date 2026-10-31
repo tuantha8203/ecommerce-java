@@ -30,6 +30,12 @@ services:
     image: redis:8-alpine
     ports:
       - "6379:6379"
+  
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"   # SMTP: the shop sends mail here
+      - "8025:8025"   # web UI: read the mail at http://localhost:8025
 
 volumes:
   shop-pgdata:
