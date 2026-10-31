@@ -10,6 +10,9 @@ import com.tuantha8203.shop.shared.PreconditionFailedException;
 import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +29,7 @@ public class ProductService implements CatalogApi {
     private final ProductRepository products;
     private final CategoryRepository categories;
     private final ProductListingQueries listingQueries;
+    private final CacheManager cacheManager;
 
     @Transactional
     public ProductDetails create(CreateProductRequest request) {
@@ -61,6 +65,7 @@ public class ProductService implements CatalogApi {
         return ProductDetails.from(load(id));
     }
 
+    @Cacheable(cacheNames = CatalogCacheConfig.PRODUCT_PAGES, key = "#slug", sync = true)
     public ProductDetails getPublishedBySlug(String slug) {
         return products.findBySlug(slug)
                 .filter(product -> product.getStatus() == ProductStatus.ACTIVE)
@@ -77,6 +82,7 @@ public class ProductService implements CatalogApi {
         }
         product.updateDetails(request.name(), request.description(), request.price());
         products.flush(); // write now so @Version is incremented before we read it into the DTO
+        evictProductPage(product.getSlug());
         return ProductDetails.from(product);
     }
 
@@ -101,14 +107,26 @@ public class ProductService implements CatalogApi {
         return PageResponse.from(result.map(ProductService::toSummary));
     }
 
+    /** With transactionAware(), the eviction actually happens right after the transaction commits. */
+    private void evictProductPage(String slug) {
+        Cache cache = cacheManager.getCache(CatalogCacheConfig.PRODUCT_PAGES);
+        if (cache != null) {
+            cache.evict(slug);
+        }
+    }
+
     @Transactional
     public void activate(long id) {
-        load(id).activate();
+        Product product = load(id);
+        product.activate();
+        evictProductPage(product.getSlug());
     }
 
     @Transactional
     public void archive(long id) {
-        load(id).archive();
+        Product product = load(id);
+        product.archive();
+        evictProductPage(product.getSlug()); // the page must disappear, not linger for 10 minutes
     }
 
     @Override

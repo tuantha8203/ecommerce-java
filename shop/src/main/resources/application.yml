@@ -17,11 +17,19 @@ spring:
                 jwt:
                     issuer-uri: http://localhost:8180/realms/ecommerce   # tokens must come from this realm
                     audiences: ecommerce-api                             # and must be meant for this API
+    cache:
+        type: redis
+        redis:
+            enable-statistics: true   # hit/miss counters, visible in /actuator/metrics
 
 management:
     endpoint:
         health:
             show-details: always               # dev: xem được trạng thái DB trong /actuator/health
+    endpoints:
+        web:
+            exposure:
+                include: health,metrics
 
 ecommerce-java:
     inventory:

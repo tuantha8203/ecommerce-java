@@ -1,0 +1,28 @@
+@shop = http://localhost:8080
+@slug = seed-product-7
+
+### 1. Admin token (needed for /actuator/metrics)
+# @name shopAdmin
+POST http://localhost:8180/realms/ecommerce/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ecommerce-cli&username=shop-admin&password=shop-admin
+
+### 2. View the product page: FIRST time → cache miss, the shop log shows a SELECT
+# @name view
+GET {{shop}}/api/v1/products/{{slug}}
+
+### 3. View it again (send this 3-4 times) → cache hit, NO select in the log
+GET {{shop}}/api/v1/products/{{slug}}
+
+### 4. How many hits?
+GET {{shop}}/actuator/metrics/cache.gets?tag=name:productPages&tag=result:hit
+Authorization: Bearer {{shopAdmin.response.body.access_token}}
+
+### 5. How many misses?
+GET {{shop}}/actuator/metrics/cache.gets?tag=name:productPages&tag=result:miss
+Authorization: Bearer {{shopAdmin.response.body.access_token}}
+
+### 6. Conditional GET with the ETag from request 2 → 304 Not Modified, empty body
+GET {{shop}}/api/v1/products/{{slug}}
+If-None-Match: {{view.response.headers.ETag}}
